@@ -1,0 +1,351 @@
+.student-profile {
+  --pro-maroon: #75243a;
+  --pro-maroon-light: #f8f0f3;
+  --pro-gold: #b49250;
+  --pro-gold-dark: #755922;
+  --pro-gold-light: #faf5e9;
+  --pro-border: #e7e4e7;
+  --pro-muted: #746d78;
+  --pro-error: #b3261e;
+
+  color: #302a32;
+}
+
+.student-profile,
+.student-profile * {
+  box-sizing: border-box;
+}
+
+.student-profile .profile-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.student-profile .profile-preview {
+  padding: 7px 13px;
+  border: 1px solid #e5dac7;
+  border-radius: 20px;
+  background: var(--pro-gold-light);
+  color: var(--pro-gold-dark);
+  font-size: 11px;
+}
+
+/* ---------- Summary card ---------- */
+
+.student-profile .profile-hero {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 22px;
+  margin-top: 28px;
+  padding: 28px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #75243a 0%, #5c1a2c 100%);
+  color: white;
+}
+
+.student-profile .profile-avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+  border: 2px solid #e8cf98;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 10%);
+  color: #e8cf98;
+  font-size: 26px;
+  letter-spacing: 1px;
+}
+
+.student-profile .profile-hero-text {
+  flex: 1;
+  min-width: 220px;
+}
+
+.student-profile .profile-hero h2 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 400;
+}
+
+.student-profile .profile-hero p {
+  margin: 4px 0 0;
+  color: rgb(255 255 255 / 80%);
+  font-size: 14px;
+}
+
+.student-profile .profile-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.student-profile .profile-chips span {
+  padding: 5px 11px;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 14%);
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+}
+
+/* ---------- Cards ---------- */
+
+.student-profile .profile-notice {
+  margin: 16px 0;
+  color: var(--pro-maroon);
+  font-size: 13px;
+}
+
+.student-profile .profile-notice:empty {
+  margin: 8px 0;
+}
+
+.student-profile .profile-card {
+  padding: 28px;
+  border: 1px solid var(--pro-border);
+  border-radius: 16px;
+  background: white;
+}
+
+.student-profile .profile-card h3 {
+  margin: 0 0 20px;
+  font-size: 19px;
+  font-weight: 400;
+}
+
+.student-profile .profile-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 32px;
+  margin: 0;
+}
+
+.student-profile .profile-details > div {
+  padding: 14px 0;
+  border-bottom: 1px solid #f0edf0;
+}
+
+.student-profile .profile-details dt {
+  color: var(--pro-muted);
+  font-size: 12px;
+}
+
+.student-profile .profile-details dd {
+  margin: 5px 0 0;
+  font-size: 14px;
+}
+
+/* ---------- Form ---------- */
+
+.student-profile .profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 20px;
+}
+
+.student-profile .profile-grid label {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  color: #655969;
+  font-size: 12px;
+}
+
+.student-profile .profile-grid .span-2 {
+  grid-column: span 2;
+}
+
+.student-profile input[type="text"],
+.student-profile select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--pro-border);
+  border-radius: 9px;
+  background: #fafafa;
+  color: #302a32;
+  font: inherit;
+  font-size: 14px;
+}
+
+.student-profile .has-error input,
+.student-profile .has-error select {
+  border-color: var(--pro-error);
+  background: #fff8f7;
+}
+
+.student-profile .profile-grid small,
+.student-profile .profile-error {
+  color: var(--pro-error);
+  font-size: 12px;
+}
+
+.student-profile .hint {
+  color: var(--pro-muted);
+  font-size: 12px;
+}
+
+.student-profile .profile-campus {
+  margin: 22px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.student-profile .profile-campus legend {
+  margin-bottom: 10px;
+  padding: 0;
+  color: #655969;
+  font-size: 12px;
+}
+
+.student-profile .profile-campus-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.student-profile .profile-campus-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--pro-border);
+  border-radius: 12px;
+  background: #fcfbfc;
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+
+.student-profile .profile-campus-options label.is-selected {
+  border-color: var(--pro-maroon);
+  background: var(--pro-maroon-light);
+}
+
+.student-profile .profile-campus-options input {
+  margin-top: 3px;
+  accent-color: var(--pro-maroon);
+}
+
+.student-profile .profile-campus-options strong {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.student-profile .profile-campus-options small {
+  color: var(--pro-muted);
+  font-size: 12px;
+}
+
+.student-profile .profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid #f0edf0;
+}
+
+/* ---------- Buttons ---------- */
+
+.student-profile .profile-button {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease, transform 200ms ease;
+}
+
+.student-profile .profile-button.primary {
+  background: var(--pro-maroon);
+  color: white;
+}
+
+.student-profile .profile-button.secondary {
+  border-color: var(--pro-border);
+  background: white;
+  color: #655969;
+}
+
+.student-profile .profile-button.light {
+  background: #e8cf98;
+  color: #3b2a0c;
+}
+
+.student-profile .profile-footnote {
+  margin-top: 22px;
+  color: var(--pro-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+@media (hover: hover) {
+  .student-profile .profile-button:hover {
+    transform: translateY(-2px);
+  }
+
+  .student-profile .profile-button.primary:hover {
+    background: var(--pro-gold);
+    color: #30230e;
+  }
+
+  .student-profile .profile-button.secondary:hover {
+    border-color: var(--pro-gold);
+    background: var(--pro-gold-light);
+  }
+
+  .student-profile .profile-button.light:hover {
+    background: white;
+    color: var(--pro-maroon);
+  }
+
+  .student-profile .profile-campus-options label:hover {
+    border-color: var(--pro-gold);
+  }
+}
+
+.student-profile button:focus-visible,
+.student-profile input:focus-visible,
+.student-profile select:focus-visible {
+  outline: 3px solid var(--pro-gold);
+  outline-offset: 2px;
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 700px) {
+  .student-profile .profile-details,
+  .student-profile .profile-grid,
+  .student-profile .profile-campus-options {
+    grid-template-columns: 1fr;
+  }
+
+  .student-profile .profile-grid .span-2 {
+    grid-column: auto;
+  }
+
+  .student-profile .profile-hero,
+  .student-profile .profile-card {
+    padding: 22px;
+  }
+
+  .student-profile .profile-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .student-profile * {
+    transition: none !important;
+  }
+}

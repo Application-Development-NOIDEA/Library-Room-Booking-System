@@ -1,37 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import SharedLayout from "./components/SharedLayout";
+import MyBookings from "./student/MyBookings";
+import WaitingList from "./student/WaitingList";
+import StudentDashboard from "./student/StudentDashboard";
+import Profile, { campusName } from "./student/Profile";
 
+/* Placeholder text for pages that aren't built yet */
 const pages = {
-  dashboard: {
-    title: "Dashboard",
-    description: "Find a space to focus, study and collaborate.",
-    heading: "Welcome to your library workspace",
-    content:
-      "Use the navigation to browse rooms, manage bookings and view your waiting list.",
-  },
-
   rooms: {
     title: "Browse Rooms",
     description: "Explore spaces for individual and group study.",
     heading: "Room directory",
     content:
       "Carrel rooms, discussion rooms and meeting rooms will appear here.",
-  },
-
-  bookings: {
-    title: "My Bookings",
-    description: "View and manage your room reservations.",
-    heading: "Your reservations",
-    content:
-      "Booking details, QR codes and reservation statuses will appear here.",
-  },
-
-  "waiting-list": {
-    title: "Waiting List",
-    description: "Queue for a fully booked room slot on the same day.",
-    heading: "Your waiting-list requests",
-    content:
-      "Queue positions, available-room offers and response deadlines will appear here.",
   },
 
   feedback: {
@@ -43,26 +24,80 @@ const pages = {
   },
 };
 
+/* Sample student profile (will come from the Supabase "profiles" table later) */
+const defaultProfile = {
+  fullName: "Ariana Arissa Binti Azri",
+  matricNo: "A23CS0001",
+  programme: "Bachelor of Computer Science (Software Engineering)",
+  year: 3,
+  campus: "jb",
+};
+
+const PROFILE_KEY = "psz-profile";
+
+function loadProfile() {
+  try {
+    const saved = window.localStorage.getItem(PROFILE_KEY);
+    return saved ? { ...defaultProfile, ...JSON.parse(saved) } : defaultProfile;
+  } catch {
+    return defaultProfile;
+  }
+}
+
 export default function App() {
   const [activePage, setActivePage] = useState("dashboard");
-  const page = pages[activePage];
+  const [profile, setProfile] = useState(loadProfile);
+  const page = pages[activePage] ?? pages.rooms;
+
+  // Keep the demo profile after a refresh
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+    } catch {
+      /* storage unavailable: ignore */
+    }
+  }, [profile]);
+
+  function renderPage() {
+    switch (activePage) {
+      case "dashboard":
+        return <StudentDashboard onNavigate={setActivePage} userName={profile.fullName} />;
+
+      case "bookings":
+        return <MyBookings />;
+
+      case "waiting-list":
+        return <WaitingList />;
+
+      case "profile":
+        return <Profile profile={profile} onSave={setProfile} />;
+
+      default:
+        return (
+          <>
+            <p className="page-eyebrow">STUDENT WORKSPACE</p>
+
+            <h1 className="page-title">{page.title}</h1>
+
+            <p className="page-description">{page.description}</p>
+
+            <section className="content-card">
+              <h2>{page.heading}</h2>
+              <p>{page.content}</p>
+            </section>
+          </>
+        );
+    }
+  }
 
   return (
     <SharedLayout
       activePage={activePage}
       onNavigate={setActivePage}
-      userName="Ariana Arissa"
+      userName={profile.fullName}
+      userDetail={`${profile.matricNo} · ${campusName(profile.campus).replace("UTM ", "")}`}
     >
-      <p className="page-eyebrow">STUDENT WORKSPACE</p>
-
-      <h1 className="page-title">{page.title}</h1>
-
-      <p className="page-description">{page.description}</p>
-
-      <section className="content-card">
-        <h2>{page.heading}</h2>
-        <p>{page.content}</p>
-      </section>
+      {renderPage()}
     </SharedLayout>
   );
 }
