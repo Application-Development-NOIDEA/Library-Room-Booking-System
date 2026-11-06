@@ -371,3 +371,75 @@ a:focus-visible {
     transition: none;
   }
 }
+/* ---------- PSZ branding ---------- */
+
+.psz-mark {
+  display: grid;
+  place-items: center;
+  color: #e8cf98; /* gold book on the maroon badge */
+}
+
+.psz-logo {
+  width: 62%;
+  height: 62%;
+}
+
+.brand-name {
+  letter-spacing: 2px;
+}
+
+.brand-subtitle {
+  max-width: 150px;
+  line-height: 1.35;
+}
+
+.header-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.header-system {
+  color: #75243a;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.header-crumb {
+  overflow: hidden;
+  color: #746d78;
+  font-size: 14px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 600px) {
+  .header-crumb {
+    display: none;
+  }
+}
+/* ---------- Header profile button ---------- */
+
+.account-button {
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+
+.account-button:hover {
+  border-color: #e7e4e7;
+  background: #faf5e9;
+}
+
+.account-button:focus-visible {
+  outline: 3px solid #b49250;
+  outline-offset: 2px;
+}
