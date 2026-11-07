@@ -48,7 +48,7 @@ function validate(form) {
   return errors;
 }
 
-export default function Profile({ profile, onSave }) {
+export default function Profile({ profile, onSave, onLogout }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(profile);
   const [errors, setErrors] = useState({});
@@ -240,6 +240,19 @@ export default function Profile({ profile, onSave }) {
             </button>
           </div>
         </form>
+      )}
+
+      {/* Account: sign out */}
+      {onLogout && (
+        <section className="profile-card profile-account">
+          <div>
+            <h3>Account</h3>
+            <p>Sign out of PSZ Room Booking on this device. You'll need your email and password to sign in again.</p>
+          </div>
+          <button type="button" className="profile-button logout" onClick={onLogout}>
+            Sign out
+          </button>
+        </section>
       )}
 
       <p className="profile-footnote">
