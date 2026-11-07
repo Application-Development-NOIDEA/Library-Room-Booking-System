@@ -137,3 +137,12 @@ CREATE TABLE notifications (
         )),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Remove the existing role constraint
+ALTER TABLE users
+DROP CONSTRAINT users_role_check;
+
+-- Add a new constraint without admin
+ALTER TABLE users
+ADD CONSTRAINT users_role_check
+CHECK (role IN ('student', 'staff'));
