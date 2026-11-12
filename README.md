@@ -53,8 +53,7 @@ An integrated **AI-Powered Report Analyzer** helps summarize student-submitted r
 | User Role | Responsibilities |
 |---|---|
 | Student | Book rooms, manage reservations, check in/out and submit feedback. |
-| Library Staff | Verify QR codes, monitor room usage and manage reservations and reports. |
-| Administrator | Manage system information, staff access and AI-generated report summaries. |
+| Library Staff | Verify QR codes, monitor room usage and manage reservations and reports. | Manage system information, staff access and AI-generated report summaries. |
 
 ## 🛠️ Technology Stack
 

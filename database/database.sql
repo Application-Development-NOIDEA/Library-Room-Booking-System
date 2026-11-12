@@ -6,7 +6,7 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     student_id VARCHAR(50) UNIQUE,
     role VARCHAR(20) NOT NULL DEFAULT 'student'
-        CHECK (role IN ('student', 'staff', 'admin')),
+        CHECK (role IN ('student', 'staff')),
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
