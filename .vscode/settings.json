@@ -1,0 +1,20 @@
+
+{
+    "files.exclude": {
+        "**/.editorconfig": true,
+        "**/.env.example": true,
+        "**/.gitattributes": true,
+        "**/.gitignore": true,
+        "**/.npmrc": true,
+        "**/AGENTS.md": true,
+        "**/artisan": true,
+        "**/boost.json": true,
+        "**/composer.json": true,
+        "**/composer.lock": true,
+        "**/package-lock.json": true,
+        "**/package.json": true,
+        "**/phpunit.xml": true,
+        "**/README.md": true,
+        "**/CLAUDE.md": true
+    }
+}
