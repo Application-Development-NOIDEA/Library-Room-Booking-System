@@ -1,0 +1,553 @@
+.report-issue {
+  --rep-maroon: #75243a;
+  --rep-maroon-light: #f8f0f3;
+  --rep-gold: #b49250;
+  --rep-gold-dark: #755922;
+  --rep-gold-light: #faf5e9;
+  --rep-border: #e7e4e7;
+  --rep-muted: #746d78;
+  --rep-error: #b3261e;
+  --rep-ok: #48624c;
+
+  color: #302a32;
+}
+
+.report-issue,
+.report-issue * {
+  box-sizing: border-box;
+}
+
+/* ---------- Heading ---------- */
+
+.report-issue .report-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.report-issue .report-preview {
+  padding: 7px 13px;
+  border: 1px solid #e5dac7;
+  border-radius: 20px;
+  background: var(--rep-gold-light);
+  color: var(--rep-gold-dark);
+  font-size: 11px;
+}
+
+/* ---------- Cards ---------- */
+
+.report-issue .report-card {
+  padding: 28px;
+  border: 1px solid var(--rep-border);
+  border-radius: 16px;
+  background: white;
+}
+
+.report-issue .report-card h2 {
+  margin: 0 0 22px;
+  font-size: 21px;
+  font-weight: 400;
+}
+
+.report-issue .report-empty {
+  text-align: center;
+}
+
+.report-issue .report-empty h2 {
+  margin-bottom: 8px;
+}
+
+.report-issue .report-empty p {
+  margin: 0;
+  color: var(--rep-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.report-issue .report-state {
+  padding: 48px 24px;
+  border: 1px dashed #dcd5df;
+  border-radius: 16px;
+  background: white;
+  color: var(--rep-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.report-issue .report-state.is-error {
+  border: 1px solid #f0c9c6;
+  background: #fff8f7;
+  color: #8a1f17;
+  text-align: left;
+}
+
+.report-issue .report-state.is-error p {
+  margin: 8px 0 16px;
+  font-size: 13px;
+}
+
+/* ---------- Form fields ---------- */
+
+.report-issue .report-field {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+}
+
+.report-issue .report-field > label,
+.report-issue .report-field > legend,
+.report-issue .report-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
+  padding: 0;
+  color: #403741;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.report-issue .report-field legend {
+  margin-bottom: 10px;
+}
+
+.report-issue .report-label em {
+  color: var(--rep-muted);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.report-issue .report-step {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--rep-maroon-light);
+  color: var(--rep-maroon);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.report-issue select,
+.report-issue textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--rep-border);
+  border-radius: 10px;
+  background: #fafafa;
+  color: #302a32;
+  font: inherit;
+  font-size: 14px;
+}
+
+.report-issue select {
+  min-height: 48px;
+  cursor: pointer;
+}
+
+.report-issue textarea {
+  min-height: 120px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.report-issue .has-error select,
+.report-issue .has-error textarea {
+  border-color: var(--rep-error);
+  background: #fff8f7;
+}
+
+.report-issue .report-field-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.report-issue .report-error {
+  color: var(--rep-error);
+  font-size: 12px;
+}
+
+.report-issue .report-hint,
+.report-issue .report-count {
+  color: var(--rep-muted);
+  font-size: 12px;
+}
+
+.report-issue .report-count {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Category chips */
+
+.report-issue .report-categories {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.report-issue .report-categories label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--rep-border);
+  border-radius: 12px;
+  background: #fcfbfc;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+
+.report-issue .report-categories input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.report-issue .report-categories label.is-selected {
+  border-color: var(--rep-maroon);
+  background: var(--rep-maroon-light);
+  color: var(--rep-maroon);
+  font-weight: 500;
+}
+
+.report-issue .report-categories label:has(input:focus-visible) {
+  outline: 3px solid var(--rep-gold);
+  outline-offset: 2px;
+}
+
+.report-issue .report-category-icon {
+  font-size: 16px;
+}
+
+/* Photo */
+
+.report-issue .report-upload {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 22px;
+  border: 1px dashed #d6ccd9;
+  border-radius: 12px;
+  background: #fcfbfc;
+  color: #403741;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
+}
+
+.report-issue .report-upload span {
+  font-size: 22px;
+}
+
+.report-issue .report-upload strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.report-issue .report-upload small {
+  color: var(--rep-muted);
+  font-size: 12px;
+}
+
+.report-issue .report-photo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--rep-border);
+  border-radius: 12px;
+}
+
+.report-issue .report-photo img {
+  width: 88px;
+  height: 88px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.report-issue .report-photo div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.report-issue .report-photo strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.report-issue .report-photo small {
+  color: var(--rep-muted);
+  font-size: 12px;
+}
+
+/* ---------- Buttons ---------- */
+
+.report-issue .report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #f0edf0;
+}
+
+.report-issue .report-button {
+  min-height: 46px;
+  padding: 11px 20px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease, transform 200ms ease;
+}
+
+.report-issue .report-button.primary {
+  background: var(--rep-maroon);
+  color: white;
+}
+
+.report-issue .report-button.secondary {
+  border-color: var(--rep-border);
+  background: white;
+  color: #655969;
+}
+
+.report-issue .report-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.report-issue .report-link {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--rep-maroon);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+/* ---------- Messages ---------- */
+
+.report-issue .report-alert {
+  margin: -6px 0 20px;
+  padding: 12px 14px;
+  border: 1px solid #f0c9c6;
+  border-radius: 10px;
+  background: #fff8f7;
+  color: #8a1f17;
+  font-size: 13px;
+}
+
+.report-issue .report-success {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 22px 24px;
+  border: 1px solid #cfe0d1;
+  border-radius: 16px;
+  background: #f1f7f2;
+}
+
+.report-issue .report-success > span {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--rep-ok);
+  color: white;
+  font-weight: 600;
+}
+
+.report-issue .report-success div {
+  flex: 1;
+  min-width: 220px;
+}
+
+.report-issue .report-success strong {
+  color: var(--rep-ok);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.report-issue .report-success p {
+  margin: 6px 0 0;
+  color: #4f5f52;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* ---------- My reports ---------- */
+
+.report-issue .report-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 32px 0 16px;
+}
+
+.report-issue .report-section-heading h2 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 400;
+}
+
+.report-issue .report-section-heading span {
+  color: var(--rep-muted);
+  font-size: 12px;
+}
+
+.report-issue .report-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-issue .report-item {
+  padding: 22px 24px;
+  border: 1px solid var(--rep-border);
+  border-radius: 14px;
+  background: white;
+}
+
+.report-issue .report-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-issue .report-category-tag {
+  color: var(--rep-gold-dark);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+}
+
+.report-issue .report-status {
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+}
+
+.report-issue .report-status.submitted {
+  background: var(--rep-gold-light);
+  color: var(--rep-gold-dark);
+}
+
+.report-issue .report-status.in_progress {
+  background: #f4e8ed;
+  color: var(--rep-maroon);
+}
+
+.report-issue .report-status.resolved {
+  background: #edf3ee;
+  color: var(--rep-ok);
+}
+
+.report-issue .report-item h3 {
+  margin: 12px 0 6px;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.report-issue .report-item-text {
+  margin: 0;
+  color: #4f4552;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.report-issue .report-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 14px;
+  color: var(--rep-muted);
+  font-size: 12px;
+}
+
+/* ---------- Hover / focus ---------- */
+
+@media (hover: hover) {
+  .report-issue .report-button.primary:not(:disabled):hover {
+    background: var(--rep-gold);
+    color: #30230e;
+    transform: translateY(-2px);
+  }
+
+  .report-issue .report-button.secondary:not(:disabled):hover {
+    border-color: var(--rep-gold);
+    background: var(--rep-gold-light);
+  }
+
+  .report-issue .report-categories label:hover,
+  .report-issue .report-upload:hover {
+    border-color: var(--rep-gold);
+  }
+}
+
+.report-issue button:focus-visible,
+.report-issue select:focus-visible,
+.report-issue textarea:focus-visible {
+  outline: 3px solid var(--rep-gold);
+  outline-offset: 2px;
+}
+
+/* ---------- Mobile ---------- */
+
+@media (max-width: 900px) {
+  .report-issue .report-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .report-issue .report-card {
+    padding: 22px;
+  }
+
+  .report-issue .report-button {
+    width: 100%;
+  }
+
+  .report-issue .report-field-foot {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .report-issue * {
+    transition: none !important;
+  }
+}

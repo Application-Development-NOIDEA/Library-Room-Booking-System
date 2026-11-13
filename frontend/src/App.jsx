@@ -5,6 +5,7 @@ import WaitingList from "./student/WaitingList";
 import StudentDashboard from "./student/StudentDashboard";
 import BookingConfirmation from "./student/BookingConfirmation";
 import BrowseRooms from "./student/BrowseRooms";
+import ReportIssue from "./student/ReportIssue";
 import Profile, { campusName } from "./student/Profile";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import {
@@ -19,25 +20,6 @@ import {
    To preview a page while building it, change this to that page's name
    (for example "rooms" or "booking-confirmation"), then change it back to "dashboard". */
 const START_PAGE = "dashboard";
-
-/* Placeholder text for pages that aren't built yet */
-const pages = {
-  rooms: {
-    title: "Browse Rooms",
-    description: "Explore spaces for individual and group study.",
-    heading: "Room directory",
-    content:
-      "Carrel rooms, discussion rooms and meeting rooms will appear here.",
-  },
-
-  feedback: {
-    title: "Report an Issue",
-    description: "Help improve library rooms and facilities.",
-    heading: "Facility issue report",
-    content:
-      "The form for reporting room facility problems will appear here.",
-  },
-};
 
 /* Reset links in the email look like: /reset-password?token=abc123 */
 function readResetToken() {
@@ -118,11 +100,11 @@ function AppContent() {
 
 function StudentApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState(START_PAGE);
-  const page = pages[activePage] ?? pages.rooms;
 
   // The booking shown on the confirmation page.
   // Later: call setLastBooking(newBooking) and setActivePage("booking-confirmation")
   // right after a booking is made. While it is null, sample data is shown.
+  // eslint-disable-next-line no-unused-vars
   const [lastBooking, setLastBooking] = useState(null);
 
   // Profile extras (programme, year, campus) are saved per user in this browser
@@ -154,11 +136,6 @@ function StudentApp({ user, onLogout }) {
 
   function renderPage() {
     switch (activePage) {
-      case "dashboard":
-        return (
-          <StudentDashboard onNavigate={setActivePage} userName={profile.fullName} userId={user.id} />
-        );
-
       case "rooms":
         return <BrowseRooms />;
 
@@ -167,6 +144,9 @@ function StudentApp({ user, onLogout }) {
 
       case "waiting-list":
         return <WaitingList />;
+
+      case "feedback":
+        return <ReportIssue />;
 
       case "booking-confirmation":
         return (
@@ -181,20 +161,10 @@ function StudentApp({ user, onLogout }) {
       case "profile":
         return <Profile profile={profile} onSave={setProfile} onLogout={onLogout} />;
 
+      case "dashboard":
       default:
         return (
-          <>
-            <p className="page-eyebrow">STUDENT WORKSPACE</p>
-
-            <h1 className="page-title">{page.title}</h1>
-
-            <p className="page-description">{page.description}</p>
-
-            <section className="content-card">
-              <h2>{page.heading}</h2>
-              <p>{page.content}</p>
-            </section>
-          </>
+          <StudentDashboard onNavigate={setActivePage} userName={profile.fullName} userId={user.id} />
         );
     }
   }
