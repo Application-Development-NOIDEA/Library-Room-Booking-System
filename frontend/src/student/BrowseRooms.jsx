@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./BrowseRooms.css";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api").replace(/\/$/, "");
 const TYPES = ["All", "Study", "Discussion", "Meeting", "Events"];
 
 export default function BrowseRooms({ onBook }) {
@@ -19,7 +19,7 @@ export default function BrowseRooms({ onBook }) {
     setLoading(true);
     setError("");
 
-    fetch(`${API_URL}/api/rooms`, { headers: { Accept: "application/json" } })
+      fetch(`${API_URL}/rooms`, { headers: { Accept: "application/json" } })
       .then((res) => {
         if (!res.ok) throw new Error(`Server replied ${res.status}`);
         return res.json();
