@@ -1,0 +1,33 @@
+.booking-confirmation {
+  max-width: 480px;
+  margin: 32px auto;
+  padding: 0 16px;
+  text-align: center;
+}
+.booking-confirmation * { box-sizing: border-box; }
+
+.confirm-icon {
+  width: 64px; height: 64px; margin: 0 auto 12px;
+  border-radius: 50%; background: #2e7d32; color: #fff;
+  font-size: 32px; line-height: 64px;
+}
+.confirm-sub { color: #666; margin-bottom: 24px; }
+
+.confirm-card {
+  background: #fff; border: 1px solid #e5dac7; border-radius: 12px;
+  padding: 8px 20px; text-align: left;
+}
+.confirm-row {
+  display: flex; justify-content: space-between; gap: 16px;
+  padding: 12px 0; border-bottom: 1px solid #f0ebe0;
+}
+.confirm-row:last-child { border-bottom: none; }
+.confirm-row span { color: #777; }
+.status { color: #2e7d32; }
+
+.confirm-actions { display: flex; gap: 12px; margin-top: 24px; }
+.confirm-actions button {
+  flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px;
+}
+.btn-primary { background: #75243a; color: #fff; border: none; }
+.btn-secondary { background: #fff; color: #75243a; border: 1px solid #75243a; }

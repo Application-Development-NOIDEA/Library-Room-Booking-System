@@ -3,6 +3,8 @@ import SharedLayout from "./components/SharedLayout";
 import MyBookings from "./student/MyBookings";
 import WaitingList from "./student/WaitingList";
 import StudentDashboard from "./student/StudentDashboard";
+import BookingConfirmation from "./student/BookingConfirmation";
+import BrowseRooms from "./student/BrowseRooms";
 import Profile, { campusName } from "./student/Profile";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import {
@@ -12,6 +14,11 @@ import {
   ResetPasswordPage,
   StaffSignedIn,
 } from "./auth/AuthPages";
+
+/* The page students see first after login.
+   To preview a page while building it, change this to that page's name
+   (for example "rooms" or "booking-confirmation"), then change it back to "dashboard". */
+const START_PAGE = "dashboard";
 
 /* Placeholder text for pages that aren't built yet */
 const pages = {
@@ -110,8 +117,13 @@ function AppContent() {
 /* ---------- The student side (only shown after login) ---------- */
 
 function StudentApp({ user, onLogout }) {
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] = useState(START_PAGE);
   const page = pages[activePage] ?? pages.rooms;
+
+  // The booking shown on the confirmation page.
+  // Later: call setLastBooking(newBooking) and setActivePage("booking-confirmation")
+  // right after a booking is made. While it is null, sample data is shown.
+  const [lastBooking, setLastBooking] = useState(null);
 
   // Profile extras (programme, year, campus) are saved per user in this browser
   // until the database has columns for them.
@@ -147,14 +159,27 @@ function StudentApp({ user, onLogout }) {
           <StudentDashboard onNavigate={setActivePage} userName={profile.fullName} userId={user.id} />
         );
 
+      case "rooms":
+        return <BrowseRooms />;
+
       case "bookings":
         return <MyBookings />;
 
       case "waiting-list":
         return <WaitingList />;
 
+      case "booking-confirmation":
+        return (
+          <BookingConfirmation
+            booking={lastBooking ?? undefined}
+            userName={profile.fullName}
+            onViewBookings={() => setActivePage("bookings")}
+            onBookAnother={() => setActivePage("rooms")}
+          />
+        );
+
       case "profile":
-                return <Profile profile={profile} onSave={setProfile} onLogout={onLogout} />;
+        return <Profile profile={profile} onSave={setProfile} onLogout={onLogout} />;
 
       default:
         return (
