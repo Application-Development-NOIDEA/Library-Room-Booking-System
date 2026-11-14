@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import ReservationsPanel from './ReservationsPanel';
 import './StaffDashboard.css';
 
 // FRONTEND DEMO DATA ONLY. Replace it with authenticated Laravel API calls.
@@ -38,7 +39,7 @@ const navigation = [
 const roomLabel = (code, rooms) => rooms.find((room) => room.code === code)?.name || code;
 const statusClass = (value) => `staff-status staff-status--${String(value).toLowerCase().replace(/[^a-z]+/g, '-')}`;
 
-export default function StaffDashboard() {
+export default function StaffDashboard({ token }) {
   const [tab, setTab] = useState('dashboard');
   const [rooms, setRooms] = useState(initialRooms);
   const [bookings, setBookings] = useState(initialBookings);
@@ -165,9 +166,7 @@ export default function StaffDashboard() {
           </>}
 
           {tab === 'reservations' && <>
-            <section className="staff-panel"><div className="staff-panel-heading"><h2>All Reservations</h2><input aria-label="Search bookings" className="staff-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, room, booking ID..." /></div>
-              <BookingTable bookings={filterBookings} rooms={rooms} onSelect={(id) => { setSelectedBookingId(id); setTab('checkin'); }} />
-            </section>
+            <ReservationsPanel token={token} />
             <section className="staff-panel staff-panel-spaced"><h2>Register a Walk-in (Demo)</h2><p className="staff-muted">For a future hybrid system. This form simulates adding a reservation, but the backend must enforce booking conflicts before saving.</p>
               <form className="staff-form-grid" onSubmit={registerWalkIn}>
                 <label>Student name<input className="staff-input" value={walkIn.student} onChange={(e) => setWalkIn((x) => ({ ...x, student: e.target.value }))} placeholder="Student name" required /></label>

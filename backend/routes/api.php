@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\IssueReportController;
+use App\Http\Controllers\StaffBookingController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -54,4 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/reports', [IssueReportController::class, 'store'])->middleware('throttle:10,1');
 });
 
+// Staff (library staff only)
+Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(function () {
+    Route::get('/bookings', [StaffBookingController::class, 'index']);
+});
         
