@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Room;
 use App\Models\UserNotification;
 use App\Models\WaitingList;
+use App\Services\WaitingListService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -15,13 +16,6 @@ use Illuminate\Support\Str;
  * Data for the student dashboard page (StudentDashboard.jsx).
  *
  * GET /api/student/dashboard
- *
- * Every key matches the sample constants in StudentDashboard.jsx:
- *   bookings      -> sampleBookings
- *   waiting       -> sampleWaiting (null when not in any queue)
- *   availability  -> sampleAvailability
- *   notifications -> sampleNotifications
- *   rules         -> rules
  *
  * Uses the real tables from database/database.sql
  * (bookings.start_at/end_at, rooms.room_name/room_type/status,
@@ -75,11 +69,12 @@ class StudentDashboardController extends Controller
 
     /**
      * The student's best (lowest) queue position, or null if not queued.
-     * Position = people in the same queue (same room type, and same room
-     * if one was chosen) who joined earlier + 1.
+     * Uses the same rules as the Waiting List page (WaitingListService).
      */
     private function waitingPosition(int $userId): ?array
     {
+        $service = app(WaitingListService::class);
+
         $entries = WaitingList::with('room:id,room_name')
             ->where('user_id', $userId)
             ->active()
@@ -88,25 +83,12 @@ class StudentDashboardController extends Controller
         $best = null;
 
         foreach ($entries as $entry) {
-            $ahead = WaitingList::active()
-                ->where('room_type', $entry->room_type)
-                ->when(
-                    $entry->room_id,
-                    fn ($query) => $query->where('room_id', $entry->room_id),
-                    fn ($query) => $query->whereNull('room_id')
-                )
-                ->where(function ($query) use ($entry) {
-                    $query->where('joined_at', '<', $entry->joined_at)
-                        ->orWhere(function ($tie) use ($entry) {
-                            $tie->where('joined_at', $entry->joined_at)->where('id', '<', $entry->id);
-                        });
-                })
-                ->count();
+            $position = $entry->status === WaitingList::STATUS_OFFERED ? 1 : $service->position($entry);
 
-            if ($best === null || $ahead + 1 < $best['position']) {
+            if ($best === null || $position < $best['position']) {
                 $best = [
-                    'room' => $entry->room?->room_name ?? 'any '.str_replace('_', ' ', $entry->room_type).' room',
-                    'position' => $ahead + 1,
+                    'room' => $entry->room?->room_name ?? $service->groupName($entry->room_type),
+                    'position' => $position,
                 ];
             }
         }

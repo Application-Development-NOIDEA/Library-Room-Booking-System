@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Room;
+use App\Services\WaitingListService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -222,13 +223,16 @@ class BookingController extends Controller
         $booking->status = 'cancelled';
         $booking->save();
 
+        // The freed room goes to the first student on the waiting list.
+        app(WaitingListService::class)->offerFreeRooms();
+
         return response()->json(['booking' => $this->payload($booking->load('room'))]);
     }
 
     /* ================================================================== */
 
     /** The Browse Rooms group for a room_type, or a 404/422 if it can't be booked. */
-    private function bookableGroup(string $type): array
+    public static function bookableGroup(string $type): array
     {
         $group = RoomController::GROUPS[$type] ?? null;
         abort_if(! $group, 404, 'Room type not found.');
@@ -237,13 +241,13 @@ class BookingController extends Controller
         return $group;
     }
 
-    private function durationsFor(string $type): array
+    public static function durationsFor(string $type): array
     {
         return $type === 'carrel' ? [4] : [1, 2];
     }
 
     /** Hours a slot of this length may start at. */
-    private function slotStarts(string $type, int $duration): array
+    public static function slotStarts(string $type, int $duration): array
     {
         if ($type === 'carrel') {
             return self::CARREL_BLOCKS;
@@ -252,7 +256,7 @@ class BookingController extends Controller
         return range(self::OPEN_HOUR, self::CLOSE_HOUR - $duration);
     }
 
-    private function checkDay(Carbon $day): ?string
+    public static function checkDay(Carbon $day): ?string
     {
         $today = Carbon::now(self::TZ)->startOfDay();
 

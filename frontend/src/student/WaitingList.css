@@ -536,3 +536,173 @@
     transform: none;
   }
 }
+/* ---------- Live waiting list (connected to the backend) ---------- */
+
+.waiting-list .waiting-heading .waiting-button.secondary {
+  min-height: 38px;
+  padding: 8px 14px;
+  border-radius: 20px;
+}
+
+.waiting-list .waiting-alert {
+  margin: 20px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.waiting-list .waiting-alert.ok {
+  border: 1px solid #cfe0d1;
+  background: #f1f7f2;
+  color: #48624c;
+}
+
+.waiting-list .waiting-alert.error {
+  border: 1px solid #f0c9c6;
+  background: #fff8f7;
+  color: #8a1f17;
+}
+
+.waiting-list .waiting-hint {
+  margin: 22px 0 0;
+  color: var(--wait-muted);
+  font-size: 13px;
+}
+
+.waiting-list .waiting-card.is-offer {
+  margin-top: 24px;
+  border-color: #e5dac7;
+  box-shadow: 0 10px 30px rgb(117 36 58 / 8%);
+}
+
+.waiting-list .waiting-status.waiting {
+  background: #f4e8ed;
+  color: var(--wait-maroon);
+}
+
+.waiting-list .waiting-status.fulfilled {
+  background: #edf3ee;
+  color: #48624c;
+}
+
+.waiting-list .waiting-log .waiting-status {
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* Duration chips */
+
+.waiting-list .waiting-durations {
+  display: flex;
+  gap: 8px;
+}
+
+.waiting-list .waiting-chip {
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 1px solid var(--wait-border);
+  border-radius: 9px;
+  background: white;
+  color: #655969;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.waiting-list .waiting-chip.is-selected {
+  border-color: var(--wait-maroon);
+  background: #f8f0f3;
+  color: var(--wait-maroon);
+  font-weight: 500;
+}
+
+/* Time slots */
+
+.waiting-list .waiting-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.waiting-list .waiting-slot-chip {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--wait-border);
+  border-radius: 12px;
+  background: #fcfbfc;
+  color: #403741;
+  font: inherit;
+  text-align: left;
+  cursor: default;
+}
+
+.waiting-list .waiting-slot-chip strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.waiting-list .waiting-slot-chip span {
+  color: var(--wait-muted);
+  font-size: 11px;
+}
+
+.waiting-list .waiting-slot-chip.join {
+  border-color: #ead9df;
+  background: white;
+  cursor: pointer;
+}
+
+.waiting-list .waiting-slot-chip.join span {
+  color: var(--wait-maroon);
+  font-weight: 500;
+}
+
+.waiting-list .waiting-slot-chip.queued,
+.waiting-list .waiting-slot-chip.mine {
+  border-color: #e5dac7;
+  background: var(--wait-gold-light);
+}
+
+.waiting-list .waiting-slot-chip.queued span,
+.waiting-list .waiting-slot-chip.mine span {
+  color: var(--wait-gold-dark);
+}
+
+.waiting-list .waiting-slot-chip.free {
+  opacity: 0.7;
+}
+
+.waiting-list .waiting-slot-chip:disabled {
+  cursor: default;
+}
+
+@media (hover: hover) {
+  .waiting-list .waiting-slot-chip.join:not(:disabled):hover {
+    border-color: var(--wait-maroon);
+    background: #f8f0f3;
+  }
+}
+
+.waiting-list .waiting-slot-chip:focus-visible,
+.waiting-list .waiting-chip:focus-visible {
+  outline: 3px solid var(--wait-gold);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .waiting-list .waiting-durations {
+    width: 100%;
+  }
+
+  .waiting-list .waiting-chip {
+    flex: 1;
+  }
+
+  .waiting-list .waiting-slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
