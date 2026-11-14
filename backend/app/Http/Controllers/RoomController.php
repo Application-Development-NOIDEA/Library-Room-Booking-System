@@ -7,7 +7,7 @@ use App\Models\Room;
 class RoomController extends Controller
 {
     // How each room_type is shown on the Browse Rooms page
-    private const GROUPS = [
+    public const GROUPS = [
         'carrel' => ['name' => 'Carrel Rooms', 'type' => 'Study', 'bookable' => true,
             'slot' => '4-hour slots', 'description' => 'Individual study carrels for quiet, focused work.'],
         'discussion' => ['name' => 'Discussion Rooms', 'type' => 'Discussion', 'bookable' => true,

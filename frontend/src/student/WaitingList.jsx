@@ -1,161 +1,242 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./WaitingList.css";
+import { useAuth } from "../auth/AuthContext";
+import { USE_MOCK_AUTH } from "../auth/authService";
+import { formatBookingDate, formatTimeRange } from "./bookingService";
 import {
-  ACTIVE_STATUSES,
-  CHECK_IN_GRACE,
-  MINUTE,
-  OFFER_WINDOW,
+  QUEUE_ROOM_TYPES,
   acceptOffer,
-  advance,
-  createInitialState,
-  joinRoom,
-  leaveEntry,
-  lineFor,
-  simulateCheckIn,
-} from "./waitingListEngine";
+  getSlots,
+  joinWaitingList,
+  leaveWaitingList,
+  listMyWaiting,
+} from "./waitingListService";
 
-const TYPE_LABELS = {
-  carrel: "CARREL ROOM",
-  discussion: "DISCUSSION ROOM",
-  meeting: "MEETING ROOM",
-};
+const DAYS_AHEAD = 14;
+const REFRESH_EVERY_MS = 20 * 1000;
+const MIN_MINUTES_LEFT = 15; // same as WaitingListService::MIN_MINUTES_LEFT
 
-const ROOM_STATUS = {
-  available: { label: "Available", className: "available" },
-  held: { label: "Offered to queue", className: "held" },
-  reserved: { label: "Awaiting check-in", className: "reserved" },
-  occupied: { label: "In use", className: "occupied" },
-};
-
-const statusLabels = {
+const STATUS_LABELS = {
   waiting: "In queue",
-  offered: "Room available",
-  accepted: "Room booked",
-  checked_in: "Checked in",
+  offered: "Room ready for you",
+  fulfilled: "Booked",
   expired: "Offer expired",
-  cancelled: "Booking cancelled",
+  cancelled: "Left queue",
 };
 
-function clock(time) {
-  return new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+/** Today and the next 13 days, as YYYY-MM-DD in local (Malaysian) time. */
+function upcomingDays() {
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < DAYS_AHEAD; i += 1) {
+    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+    const name = i === 0 ? "Today" : i === 1 ? "Tomorrow" : day.toLocaleDateString("en-GB", { weekday: "short" });
+    days.push({ iso, label: `${name}, ${day.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` });
+  }
+  return days;
 }
 
-function countdown(target, now) {
-  const seconds = Math.max(0, Math.ceil((target - now) / 1000));
-  const minutes = Math.floor(seconds / 60);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+function shortDate(isoDate) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+function countdown(ms) {
+  const seconds = Math.max(0, Math.ceil(ms / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** What a slot means for joining the queue. */
+function slotState(slot, duration, queued, now) {
+  const end = Date.parse(slot.start_at) + duration * 60 * 60 * 1000;
+
+  if (queued?.status === "offered") return { kind: "queued", label: "Room ready · accept above" };
+  if (queued) return { kind: "queued", label: `In queue · #${queued.position}` };
+  if (slot.you_have_booking) return { kind: "mine", label: "You're booked" };
+  if (end <= now + MIN_MINUTES_LEFT * 60 * 1000) return { kind: "over", label: "Over" };
+  if (!slot.past && slot.free > 0) return { kind: "free", label: `${slot.free} free · book it` };
+  if (slot.free > 0) return { kind: "join", label: "Free now · join to get it" };
+  return { kind: "join", label: "Full · join queue" };
 }
 
 export default function WaitingList() {
-  const [realNow, setRealNow] = useState(Date.now());
-  const [offset, setOffset] = useState(0); // demo "skip time" offset
-  const [data, setData] = useState(() => createInitialState(Date.now()));
-  const [roomId, setRoomId] = useState("dr01");
-  const [notice, setNotice] = useState("");
+  const { token } = useAuth();
+  const days = useMemo(upcomingDays, []);
 
-  const now = realNow + offset;
+  // Your requests
+  const [mine, setMine] = useState(null);
+  const [offset, setOffset] = useState(0); // server clock minus this computer's clock
+  const [mineError, setMineError] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  // Join form
+  const [roomType, setRoomType] = useState(QUEUE_ROOM_TYPES[0].id);
+  const [date, setDate] = useState(days[0].iso);
+  const [durationByType, setDurationByType] = useState({}); // hours picked, per room type
+  const duration = durationByType[roomType] ?? null;
+  const [slots, setSlots] = useState(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotsError, setSlotsError] = useState("");
+
+  const [busy, setBusy] = useState(""); // what is being sent right now
+  const [notice, setNotice] = useState(null); // { tone: "ok" | "error", text }
+  const expiredRef = useRef(new Set());
+
+  const loadMine = useCallback(async () => {
+    if (USE_MOCK_AUTH) return;
+    try {
+      const data = await listMyWaiting(token);
+      setOffset(Date.parse(data.server_time) - Date.now());
+      setMine(data);
+      setMineError("");
+    } catch (err) {
+      setMineError(err.message);
+    }
+  }, [token]);
+
+  const loadSlots = useCallback(async () => {
+    if (USE_MOCK_AUTH) return;
+    setSlotsLoading(true);
+    setSlotsError("");
+    try {
+      setSlots(await getSlots(token, roomType, date, duration));
+    } catch (err) {
+      setSlots(null);
+      setSlotsError(err.message);
+    } finally {
+      setSlotsLoading(false);
+    }
+  }, [token, roomType, date, duration]);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setRealNow(Date.now()), 1000);
+    loadMine();
+  }, [loadMine]);
+
+  useEffect(() => {
+    loadSlots();
+  }, [loadSlots]);
+
+  const entries = mine?.entries ?? [];
+  const offers = entries.filter((entry) => entry.status === "offered");
+  const waiting = entries.filter((entry) => entry.status === "waiting");
+  const history = entries.filter((entry) => !["offered", "waiting"].includes(entry.status));
+  const hasActive = offers.length + waiting.length > 0;
+  const serverNow = now + offset;
+
+  // Clock for the countdowns
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  // Apply the queue rules every tick: no-show cancel, offer expiry, hand-over.
+  // While you're in a queue, check for offers regularly
   useEffect(() => {
-    setData((current) => advance(current, now));
-  }, [now]);
+    if (!hasActive) return undefined;
+    const timer = window.setInterval(loadMine, REFRESH_EVERY_MS);
+    return () => window.clearInterval(timer);
+  }, [hasActive, loadMine]);
 
-  const { rooms, queue, log } = data;
-  const myEntries = queue
-    .filter((entry) => entry.isYou)
-    .sort((a, b) => b.joinedAt - a.joinedAt);
-
-  function join(targetRoomId) {
-    const room = rooms.find((item) => item.id === targetRoomId);
-    const alreadyJoined = myEntries.some(
-      (entry) => entry.roomId === targetRoomId && ACTIVE_STATUSES.includes(entry.status)
-    );
-
-    if (alreadyJoined) {
-      setNotice(`You already have an active request for ${room.name}.`);
-      return;
+  // When an offer's countdown hits zero, ask the server what happened
+  useEffect(() => {
+    for (const entry of offers) {
+      if (Date.parse(entry.offer?.expires_at) <= serverNow && !expiredRef.current.has(entry.id)) {
+        expiredRef.current.add(entry.id);
+        loadMine();
+        loadSlots();
+      }
     }
+  }, [offers, serverNow, loadMine, loadSlots]);
 
-    const ahead = lineFor(queue, targetRoomId).length;
-    const freeNow = room.status === "available" && ahead === 0;
-
-    setData((current) => joinRoom(current, targetRoomId, now));
-    setNotice(
-      freeNow
-        ? `${room.name} is free right now. Accept the offer below to book it.`
-        : `You joined the queue for ${room.name}. You are #${ahead + 1} in line.`
-    );
+  function chooseType(id) {
+    setRoomType(id);
+    setNotice(null);
   }
 
-  function handleSubmit(event) {
-    event.preventDefault();
-    join(roomId);
-  }
-
-  function handleAccept(entry) {
-    if (entry.expiresAt <= now) {
-      setNotice("This offer has expired and was passed to the next person.");
-    } else {
-      setNotice("Room booked. Show your QR code at the counter within 15 minutes.");
+  async function join(slot) {
+    setBusy(`join-${slot.start_time}`);
+    setNotice(null);
+    try {
+      const entry = await joinWaitingList(token, {
+        roomType,
+        date,
+        startTime: slot.start_time,
+        duration: slots.duration,
+      });
+      setNotice({
+        tone: "ok",
+        text:
+          entry.status === "offered"
+            ? "A room is free right now and is being held for you. Accept it below."
+            : `You joined the queue for ${entry.room_group}, ${formatTimeRange(entry.start_time, entry.end_time)}. You're #${entry.position} in line.`,
+      });
+      await Promise.all([loadMine(), loadSlots()]);
+    } catch (err) {
+      setNotice({ tone: "error", text: err.message });
+      loadSlots();
+    } finally {
+      setBusy("");
     }
-    setData((current) => acceptOffer(current, entry.id, now));
   }
 
-  function handleLeave(entry) {
-    const messages = {
-      waiting: "You left the queue.",
-      offered: "You declined the offer. It has been passed to the next person.",
-      accepted: "Your booking was cancelled and the room passed to the next person.",
-    };
-    setData((current) => leaveEntry(current, entry.id, now));
-    setNotice(messages[entry.status] ?? "Your waiting-list request has been removed.");
-  }
-
-  function handleCheckIn(entry) {
-    setData((current) => simulateCheckIn(current, entry.id, now));
-    setNotice("Checked in. Enjoy your session!");
-  }
-
-  function skip(minutes) {
-    setOffset((value) => value + minutes * MINUTE);
-  }
-
-  function resetDemo() {
-    setOffset(0);
-    setData(createInitialState(Date.now()));
-    setNotice("Demo reset.");
-  }
-
-  function roomDetail(room) {
-    if (room.status === "available") return "Free now";
-    if (room.status === "occupied") return room.endTime ? `Free at ${clock(room.endTime)}` : "In session";
-    if (room.status === "reserved") {
-      return `Check-in closes in ${countdown(room.checkInDeadline, now)}`;
+  async function accept(entry) {
+    setBusy(`accept-${entry.id}`);
+    setNotice(null);
+    try {
+      const { booking } = await acceptOffer(token, entry.id);
+      setNotice({
+        tone: "ok",
+        text: `Booked ${booking.room_name} (${booking.reference}). Show your QR code at the counter within ${
+          mine?.rules?.check_in_minutes ?? 15
+        } minutes of the start time. You'll find it in My Bookings.`,
+      });
+    } catch (err) {
+      setNotice({ tone: "error", text: err.message });
+    } finally {
+      setBusy("");
+      await Promise.all([loadMine(), loadSlots()]);
     }
-    const entry = queue.find((q) => q.id === room.heldFor);
-    return entry ? `Offer ends in ${countdown(entry.expiresAt, now)}` : "Offered to queue";
   }
 
-  function whyWaiting(room) {
-    if (room.status === "reserved") {
-      return `Booked by another student. If they don't check in within ${countdown(
-        room.checkInDeadline,
-        now
-      )}, the booking is cancelled and the room moves down the queue.`;
+  async function leave(entry) {
+    setBusy(`leave-${entry.id}`);
+    setNotice(null);
+    try {
+      await leaveWaitingList(token, entry.id);
+      setNotice({
+        tone: "ok",
+        text:
+          entry.status === "offered"
+            ? "You declined the room. It has been offered to the next person."
+            : "You left the queue.",
+      });
+    } catch (err) {
+      setNotice({ tone: "error", text: err.message });
+    } finally {
+      setBusy("");
+      await Promise.all([loadMine(), loadSlots()]);
     }
-    if (room.status === "occupied") {
-      return `In use until about ${clock(room.endTime)}. It will be offered to the queue when it frees up.`;
-    }
-    if (room.status === "held") {
-      return "The student ahead of you has an offer. If they don't accept in time, it moves to the next person.";
-    }
-    return "We will show an offer here as soon as the room is available.";
   }
+
+  const checkInMinutes = mine?.rules?.check_in_minutes ?? 15;
+  const offerMinutes = mine?.rules?.offer_minutes ?? 10;
+  const typeName = QUEUE_ROOM_TYPES.find((type) => type.id === roomType)?.name;
+
+  const visibleSlots = (slots?.slots ?? [])
+    .map((slot) => {
+      const queued = waiting
+        .concat(offers)
+        .find(
+          (entry) =>
+            entry.room_type === roomType &&
+            entry.date === date &&
+            entry.start_time === slot.start_time &&
+            entry.end_time === slot.end_time
+        );
+      return { slot, state: slotState(slot, slots.duration, queued, serverNow) };
+    })
+    .filter(({ state }) => state.kind !== "over");
+  const joinable = visibleSlots.filter(({ state }) => state.kind === "join").length;
 
   return (
     <div className="waiting-list">
@@ -164,242 +245,257 @@ export default function WaitingList() {
           <p className="page-eyebrow">YOUR NEXT AVAILABLE SPACE</p>
           <h1 className="page-title">Waiting List</h1>
           <p className="page-description">
-            See which rooms are free, join today's queue, and take a room when it's your turn.
+            Every room taken? Join the queue for that time and take the room as soon as one frees up.
           </p>
         </div>
-
-        <span className="waiting-preview">Sample data</span>
+        {!USE_MOCK_AUTH && (
+          <button type="button" className="waiting-button secondary" onClick={() => { loadMine(); loadSlots(); }}>
+            ↻ Refresh
+          </button>
+        )}
       </div>
 
       <div className="waiting-guidance">
-        Students who don't check in within {CHECK_IN_GRACE / MINUTE} minutes of their booking
-        start lose the booking automatically. The room is then offered to the next person in
-        the queue, who has {OFFER_WINDOW / MINUTE} minutes to accept.
+        Students who don't check in within {checkInMinutes} minutes of their booking start lose the booking. The room
+        is then offered to the first person in the queue, who has {offerMinutes} minutes to accept before it moves to
+        the next person.
       </div>
 
-      {/* Demo controls: speed up time so the 15-minute rules can be shown live */}
-      <div className="waiting-demo">
-        <div>
-          <span className="waiting-category">DEMO CLOCK</span>
-          <strong>{clock(now)}</strong>
-        </div>
-        <div className="waiting-demo-actions">
-          <button type="button" className="waiting-button secondary" onClick={() => skip(5)}>
-            Skip 5 min
-          </button>
-          <button type="button" className="waiting-button secondary" onClick={() => skip(15)}>
-            Skip 15 min
-          </button>
-          <button type="button" className="waiting-button quiet" onClick={resetDemo}>
-            Reset demo
-          </button>
-        </div>
-      </div>
-
-      {/* Room availability */}
-      <div className="waiting-section-heading">
-        <h2>Room availability</h2>
-        <span>
-          {rooms.filter((room) => room.status === "available").length} of {rooms.length} free now
-        </span>
-      </div>
-
-      <div className="waiting-rooms">
-        {rooms.map((room) => {
-          const line = lineFor(queue, room.id);
-          const status = ROOM_STATUS[room.status];
-          const mine = myEntries.find(
-            (entry) => entry.roomId === room.id && ACTIVE_STATUSES.includes(entry.status)
-          );
-          const canTakeNow = room.status === "available" && line.length === 0;
-
-          return (
-            <article className={`waiting-room ${room.id === roomId ? "selected" : ""}`} key={room.id}>
-              <div className="waiting-card-top">
-                <span className="waiting-category">{TYPE_LABELS[room.type]}</span>
-                <span className={`waiting-room-status ${status.className}`}>{status.label}</span>
-              </div>
-              <h3>{room.name}</h3>
-              <p className="waiting-room-detail">{roomDetail(room)}</p>
-              <p className="waiting-room-queue">
-                {line.length === 0 ? "No queue" : `${line.length} in queue`}
-              </p>
-              <button
-                type="button"
-                className={`waiting-button ${canTakeNow ? "primary" : "secondary"}`}
-                disabled={Boolean(mine)}
-                onClick={() => {
-                  setRoomId(room.id);
-                  join(room.id);
-                }}
-              >
-                {mine ? "You're in this queue" : canTakeNow ? "Take This Room" : "Join Queue"}
-              </button>
-            </article>
-          );
-        })}
-      </div>
-
-      <form className="waiting-form" onSubmit={handleSubmit}>
-        <div>
-          <h2>Find your next space</h2>
-          <p>Choose a room to join its queue for today. If it's free and no one is waiting, it's offered to you straight away.</p>
-        </div>
-
-        <div className="waiting-form-controls">
-          <label htmlFor="waiting-room">
-            Room
-            <select id="waiting-room" value={roomId} onChange={(event) => setRoomId(event.target.value)}>
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name} · {ROOM_STATUS[room.status].label} · {lineFor(queue, room.id).length} queuing
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <button className="waiting-button primary" type="submit">
-            Join Waiting List
-          </button>
-        </div>
-      </form>
-
-      <p className="waiting-notice" role="status">
-        {notice}
-      </p>
-
-      <div className="waiting-section-heading">
-        <h2>Your requests</h2>
-        <span>{myEntries.length} {myEntries.length === 1 ? "request" : "requests"}</span>
-      </div>
-
-      {myEntries.length === 0 ? (
+      {USE_MOCK_AUTH ? (
         <section className="waiting-empty">
-          <h2>A little patience, a better space.</h2>
-          <p>You have no waiting-list requests. Choose a room above to get started.</p>
+          <h2>The waiting list needs the real login</h2>
+          <p>
+            You're signed in with demo mode, so the server doesn't know who you are. In <code>frontend/.env.local</code>{" "}
+            set <code>VITE_USE_MOCK_AUTH=false</code>, restart <code>npm run dev</code>, and sign in again.
+          </p>
         </section>
       ) : (
-        <div className="waiting-cards">
-          {myEntries.map((entry) => {
-            const room = rooms.find((item) => item.id === entry.roomId);
-            const line = lineFor(queue, entry.roomId);
-            const position = line.findIndex((item) => item.id === entry.id) + 1;
-            const ahead = position - 1;
+        <>
+          {notice && (
+            <p className={`waiting-alert ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
+              {notice.text}
+            </p>
+          )}
+          {mineError && (
+            <p className="waiting-alert error" role="alert">
+              Couldn't load your requests. {mineError}
+            </p>
+          )}
 
+          {/* ---------- Offers ---------- */}
+          {offers.map((entry) => {
+            const left = Date.parse(entry.offer?.expires_at) - serverNow;
             return (
-              <article className="waiting-card" key={entry.id}>
+              <article className="waiting-card is-offer" key={entry.id}>
                 <div className="waiting-card-top">
-                  <span className="waiting-category">SAME-DAY REQUEST · {TYPE_LABELS[room.type]}</span>
-                  <span className={`waiting-status ${entry.status}`}>{statusLabels[entry.status]}</span>
+                  <span className="waiting-category">ROOM READY · {entry.room_group.toUpperCase()}</span>
+                  <span className="waiting-status offered">{STATUS_LABELS.offered}</span>
                 </div>
-
-                <h2>{room.name}</h2>
-                <p className="waiting-slot">Today · joined at {clock(entry.joinedAt)}</p>
-
-                {entry.status === "waiting" && (
-                  <div className="waiting-position">
-                    <strong>{position}</strong>
-                    <div>
-                      <span>
-                        Position {position} of {line.length} ·{" "}
-                        {ahead === 0 ? "you're next" : `${ahead} ${ahead === 1 ? "person" : "people"} ahead of you`}
-                      </span>
-                      <p>{whyWaiting(room)}</p>
-                    </div>
+                <h2>{entry.offer?.room_name ?? entry.room_group}</h2>
+                <p className="waiting-slot">
+                  {formatBookingDate(entry.date)} ·{" "}
+                  {formatTimeRange(entry.offer?.start_time ?? entry.start_time, entry.offer?.end_time ?? entry.end_time)}
+                  {entry.offer?.location ? ` · ${entry.offer.location}` : ""}
+                </p>
+                <div className="waiting-offer">
+                  <div>
+                    <strong>A room is being held for you</strong>
+                    <p>Accept before the countdown ends, or it goes to the next person in the queue.</p>
                   </div>
-                )}
-
-                {entry.status === "offered" && (
-                  <div className="waiting-offer">
-                    <div>
-                      <strong>A space is ready for you</strong>
-                      <p>Accept before the countdown ends, or it goes to the next person.</p>
-                    </div>
-                    <span className="waiting-timer" aria-label="Time remaining to accept">
-                      {countdown(entry.expiresAt, now)}
-                    </span>
-                  </div>
-                )}
-
-                {entry.status === "accepted" && room.isYou && (
-                  <div className="waiting-offer">
-                    <div>
-                      <strong>Booked: check in at the library counter</strong>
-                      <p>Show your QR code before the timer ends or the room is released to the queue.</p>
-                    </div>
-                    <span className="waiting-timer" aria-label="Time remaining to check in">
-                      {countdown(room.checkInDeadline, now)}
-                    </span>
-                  </div>
-                )}
-
-                {entry.status === "checked_in" && (
-                  <p className="waiting-result">
-                    You're checked in. Your session runs until about {clock(room.endTime)}.
-                  </p>
-                )}
-
-                {entry.status === "expired" && (
-                  <p className="waiting-result">
-                    You didn't accept in time, so the room went to the next person. Remove this
-                    request to join again.
-                  </p>
-                )}
-
-                {entry.status === "cancelled" && (
-                  <p className="waiting-result">
-                    Your booking was cancelled because you didn't check in within 15 minutes. The
-                    room was offered to the next person in line.
-                  </p>
-                )}
-
+                  <span className="waiting-timer" aria-label="Time left to accept">
+                    {countdown(left)}
+                  </span>
+                </div>
                 <div className="waiting-actions">
-                  {entry.status === "offered" && (
-                    <button type="button" className="waiting-button primary" onClick={() => handleAccept(entry)}>
-                      Accept Room
-                    </button>
-                  )}
-
-                  {entry.status === "accepted" && (
-                    <button type="button" className="waiting-button secondary" onClick={() => handleCheckIn(entry)}>
-                      Simulate Counter Check-in
-                    </button>
-                  )}
-
-                  {entry.status !== "checked_in" && (
-                    <button type="button" className="waiting-button quiet" onClick={() => handleLeave(entry)}>
-                      {{ waiting: "Leave Queue", offered: "Decline Offer", accepted: "Cancel Booking" }[entry.status] ??
-                        "Remove Request"}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="waiting-button primary"
+                    disabled={Boolean(busy) || left <= 0}
+                    onClick={() => accept(entry)}
+                  >
+                    {busy === `accept-${entry.id}` ? "Booking…" : "Accept Room"}
+                  </button>
+                  <button
+                    type="button"
+                    className="waiting-button quiet"
+                    disabled={Boolean(busy)}
+                    onClick={() => leave(entry)}
+                  >
+                    Decline
+                  </button>
                 </div>
               </article>
             );
           })}
-        </div>
-      )}
 
-      {log.length > 0 && (
-        <>
+          {/* ---------- Join ---------- */}
+          <section className="waiting-form">
+            <h2>Join a waiting list</h2>
+            <p>
+              Pick a room type and day. Times marked <strong>Full</strong> can be queued for. If a room is still free,
+              book it from Browse Rooms instead.
+            </p>
+
+            <div className="waiting-form-controls">
+              <label htmlFor="waiting-type">
+                Room type
+                <select id="waiting-type" value={roomType} onChange={(event) => chooseType(event.target.value)}>
+                  {QUEUE_ROOM_TYPES.map((type) => (
+                    <option key={type.id} value={type.id}>
+                      {type.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label htmlFor="waiting-date">
+                Day
+                <select id="waiting-date" value={date} onChange={(event) => setDate(event.target.value)}>
+                  {days.map((day) => (
+                    <option key={day.iso} value={day.iso}>
+                      {day.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {slots?.durations?.length > 1 && (
+                <div className="waiting-durations" role="radiogroup" aria-label="Duration">
+                  {slots.durations.map((hours) => (
+                    <button
+                      key={hours}
+                      type="button"
+                      role="radio"
+                      aria-checked={slots.duration === hours}
+                      className={`waiting-chip ${slots.duration === hours ? "is-selected" : ""}`}
+                     onClick={() => setDurationByType((current) => ({ ...current, [roomType]: hours }))}
+                    >
+                      {hours} {hours === 1 ? "hour" : "hours"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {slotsLoading && !slots ? (
+              <p className="waiting-hint">Loading times…</p>
+            ) : slotsError ? (
+              <p className="waiting-alert error">{slotsError}</p>
+            ) : visibleSlots.length === 0 ? (
+              <p className="waiting-hint">No more times left on this day. Try another day.</p>
+            ) : (
+              <>
+                <p className="waiting-hint">
+                  {joinable === 0
+                    ? `${typeName}: nothing to queue for on this day. Every time below still has a free room or is yours.`
+                    : `${typeName}: ${joinable} ${joinable === 1 ? "time" : "times"} you can queue for.`}
+                </p>
+                <div className="waiting-slots">
+                  {visibleSlots.map(({ slot, state }) => (
+                    <button
+                      key={slot.start_time}
+                      type="button"
+                      className={`waiting-slot-chip ${state.kind}`}
+                      disabled={state.kind !== "join" || Boolean(busy)}
+                      onClick={() => join(slot)}
+                    >
+                      <strong>{formatTimeRange(slot.start_time, slot.end_time)}</strong>
+                      <span>{busy === `join-${slot.start_time}` ? "Joining…" : state.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+
+          {/* ---------- Your queues ---------- */}
           <div className="waiting-section-heading">
-            <h2>Live queue activity</h2>
-            <span>Latest first</span>
+            <h2>Your queues</h2>
+            <span>
+              {waiting.length + offers.length} of {mine?.rules?.max_requests ?? 3} used
+            </span>
           </div>
-          <ul className="waiting-log">
-            {log.map((item) => (
-              <li key={item.id}>
-                <time>{clock(item.time)}</time>
-                <span>{item.text}</span>
-              </li>
-            ))}
-          </ul>
+
+          {mine === null && !mineError ? (
+            <p className="waiting-hint">Loading your requests…</p>
+          ) : waiting.length === 0 ? (
+            <section className="waiting-empty">
+              <h2>A little patience, a better space.</h2>
+              <p>You're not in any queue. Choose a full time above to join one.</p>
+            </section>
+          ) : (
+            <div className="waiting-cards">
+              {waiting.map((entry) => {
+                const ahead = entry.position - 1;
+                return (
+                  <article className="waiting-card" key={entry.id}>
+                    <div className="waiting-card-top">
+                      <span className="waiting-category">
+                        {entry.reference} · {entry.room_group.toUpperCase()}
+                      </span>
+                      <span className="waiting-status waiting">{STATUS_LABELS.waiting}</span>
+                    </div>
+                    <h2>{formatTimeRange(entry.start_time, entry.end_time)}</h2>
+                    <p className="waiting-slot">
+                      {formatBookingDate(entry.date)} · joined at{" "}
+                      {new Date(entry.joined_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                    </p>
+                    <div className="waiting-position">
+                      <strong>{entry.position}</strong>
+                      <div>
+                        <span>
+                          Position {entry.position} of {entry.line_size} ·{" "}
+                          {ahead === 0 ? "you're next" : `${ahead} ${ahead === 1 ? "person" : "people"} ahead of you`}
+                        </span>
+                        <p>
+                          When a room frees up (a cancellation or a no-show after {checkInMinutes} minutes), it's
+                          offered here in order. Keep this page open or check your Dashboard.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="waiting-actions">
+                      <button
+                        type="button"
+                        className="waiting-button quiet"
+                        disabled={Boolean(busy)}
+                        onClick={() => leave(entry)}
+                      >
+                        {busy === `leave-${entry.id}` ? "Leaving…" : "Leave Queue"}
+                      </button>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ---------- History ---------- */}
+          {history.length > 0 && (
+            <>
+              <div className="waiting-section-heading">
+                <h2>Recent requests</h2>
+                <span>Last 7 days</span>
+              </div>
+              <ul className="waiting-log">
+                {history.map((entry) => (
+                  <li key={entry.id}>
+                    <time>{shortDate(entry.date)}</time>
+                    <span>
+                      <strong className={`waiting-status ${entry.status}`}>{STATUS_LABELS[entry.status] ?? entry.status}</strong>{" "}
+                      {entry.room_group}, {formatTimeRange(entry.start_time, entry.end_time)}
+                      {entry.booking ? ` → ${entry.booking.room_name} (${entry.booking.reference})` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          <p className="waiting-footnote">
+            Times are Malaysian time. While you're in a queue, this page checks for offers every 20 seconds.
+          </p>
         </>
       )}
-
-      <p className="waiting-footnote">
-        Frontend preview: rooms, other students and timings are simulated. Use the demo clock to
-        skip ahead. Everything resets when this page is reopened or refreshed.
-      </p>
     </div>
   );
 }
