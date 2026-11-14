@@ -5,6 +5,7 @@ import WaitingList from "./student/WaitingList";
 import StudentDashboard from "./student/StudentDashboard";
 import BookingConfirmation from "./student/BookingConfirmation";
 import BrowseRooms from "./student/BrowseRooms";
+import BookRoom from "./student/BookRoom";
 import ReportIssue from "./student/ReportIssue";
 import Profile, { campusName } from "./student/Profile";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
@@ -101,10 +102,8 @@ function AppContent() {
 function StudentApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState(START_PAGE);
 
-  // The booking shown on the confirmation page.
-  // Later: call setLastBooking(newBooking) and setActivePage("booking-confirmation")
-  // right after a booking is made. While it is null, sample data is shown.
-  // eslint-disable-next-line no-unused-vars
+  // The room type picked on Browse Rooms, and the booking just made.
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [lastBooking, setLastBooking] = useState(null);
 
   // Profile extras (programme, year, campus) are saved per user in this browser
@@ -137,7 +136,26 @@ function StudentApp({ user, onLogout }) {
   function renderPage() {
     switch (activePage) {
       case "rooms":
-        return <BrowseRooms />;
+        return (
+          <BrowseRooms
+            onBook={(room) => {
+              setSelectedRoom(room);
+              setActivePage("book");
+            }}
+          />
+        );
+
+      case "book":
+        return (
+          <BookRoom
+            room={selectedRoom}
+            onBack={() => setActivePage("rooms")}
+            onBooked={(booking) => {
+              setLastBooking(booking);
+              setActivePage("booking-confirmation");
+            }}
+          />
+        );
 
       case "bookings":
         return <MyBookings />;
@@ -151,8 +169,7 @@ function StudentApp({ user, onLogout }) {
       case "booking-confirmation":
         return (
           <BookingConfirmation
-            booking={lastBooking ?? undefined}
-            userName={profile.fullName}
+            booking={lastBooking}
             onViewBookings={() => setActivePage("bookings")}
             onBookAnother={() => setActivePage("rooms")}
           />
@@ -169,9 +186,12 @@ function StudentApp({ user, onLogout }) {
     }
   }
 
+  // The booking form and confirmation belong to "Browse Rooms" in the sidebar
+  const sidebarPage = ["book", "booking-confirmation"].includes(activePage) ? "rooms" : activePage;
+
   return (
     <SharedLayout
-      activePage={activePage}
+      activePage={sidebarPage}
       onNavigate={setActivePage}
       onLogout={onLogout}
       userName={profile.fullName}

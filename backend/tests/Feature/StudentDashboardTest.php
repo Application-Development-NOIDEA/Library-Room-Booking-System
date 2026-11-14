@@ -5,9 +5,9 @@ namespace Tests\Feature;
 use App\Models\Booking;
 use App\Models\Room;
 use App\Models\User;
+use App\Models\UserNotification;
 use App\Models\WaitingList;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Notifications\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -22,37 +22,35 @@ class StudentDashboardTest extends TestCase
 
     public function test_dashboard_returns_the_students_data(): void
     {
-        $this->travelTo('2026-11-12 09:00:00');
+        $this->travelTo('2026-11-12 09:00:00'); // UTC
 
         $student = User::factory()->create(['name' => 'Aina Sofea']);
         $other = User::factory()->create();
 
-        $carrel1 = Room::create(['name' => 'Carrel Room 01', 'type' => 'carrel']);
-        $carrel8 = Room::create(['name' => 'Carrel Room 08', 'type' => 'carrel']);
-        $discussion = Room::create(['name' => 'Discussion Room 01', 'type' => 'discussion']);
-        Room::create(['name' => 'Meeting Room 01', 'type' => 'meeting', 'is_active' => false]);
+        $carrel1 = $this->room('CR-01', 'Carrel Room 01', 'carrel');
+        $carrel8 = $this->room('CR-08', 'Carrel Room 08', 'carrel');
+        $discussion = $this->room('DR-01', 'Discussion Room 01', 'discussion');
+        $this->room('SR-03', 'Seminar Room 3', 'seminar', 'maintenance');
 
-        // Student's bookings: one upcoming x2, one finished, one cancelled
+        // Student's bookings: two upcoming, one finished, one cancelled
         $later = $this->book($student, $carrel8, '2026-11-13 14:00', '2026-11-13 16:00');
         $sooner = $this->book($student, $discussion, '2026-11-12 10:00', '2026-11-12 12:00');
-        $this->book($student, $carrel1, '2026-11-11 10:00', '2026-11-11 12:00', 'completed');
+        $this->book($student, $carrel1, '2026-11-11 10:00', '2026-11-11 12:00', 'checked_out');
         $this->book($student, $carrel1, '2026-11-14 10:00', '2026-11-14 12:00', 'cancelled');
 
         // Someone else is using Carrel 01 right now
         $this->book($other, $carrel1, '2026-11-12 08:00', '2026-11-12 10:00', 'checked_in');
 
         // Queue for the discussion room: other first, then the student
-        WaitingList::create(['user_id' => $other->id, 'room_id' => $discussion->id]);
-        $this->travel(1)->minutes();
-        WaitingList::create(['user_id' => $student->id, 'room_id' => $discussion->id]);
+        $this->queue($other, $discussion, '2026-11-12 08:30:00');
+        $this->queue($student, $discussion, '2026-11-12 08:31:00');
 
-        $student->notify(new class extends Notification {
-            public function via(): array { return ['database']; }
-            public function toArray(): array
-            {
-                return ['tone' => 'gold', 'title' => 'Booking confirmed', 'text' => 'Your QR code is ready.'];
-            }
-        });
+        UserNotification::create([
+            'user_id' => $student->id,
+            'message_type' => 'booking_confirmed',
+            'message' => 'Your QR code is ready.',
+            'status' => 'sent',
+        ]);
 
         Sanctum::actingAs($student);
 
@@ -72,11 +70,13 @@ class StudentDashboardTest extends TestCase
         $response->assertJsonPath('availability', [
             ['type' => 'Carrel', 'free' => 1, 'total' => 2],
             ['type' => 'Discussion', 'free' => 1, 'total' => 1],
-            ['type' => 'Meeting', 'free' => 0, 'total' => 0],
+            ['type' => 'Seminar', 'free' => 0, 'total' => 0],
+            ['type' => 'Viewing', 'free' => 0, 'total' => 0],
+            ['type' => 'Lab', 'free' => 0, 'total' => 0],
         ]);
 
         $response->assertJsonCount(1, 'notifications');
-        $response->assertJsonPath('notifications.0.title', 'Booking confirmed');
+        $response->assertJsonPath('notifications.0.title', 'Booking Confirmed');
         $response->assertJsonPath('notifications.0.tone', 'gold');
 
         $response->assertJsonCount(3, 'rules');
@@ -92,14 +92,38 @@ class StudentDashboardTest extends TestCase
             ->assertJsonPath('bookings', []);
     }
 
+    private function room(string $code, string $name, string $type, string $status = 'active'): Room
+    {
+        return Room::create([
+            'room_code' => $code,
+            'room_name' => $name,
+            'room_type' => $type,
+            'capacity' => 6,
+            'status' => $status,
+        ]);
+    }
+
     private function book(User $user, Room $room, string $start, string $end, string $status = 'confirmed'): Booking
     {
         return Booking::create([
             'user_id' => $user->id,
             'room_id' => $room->id,
-            'start_time' => $start,
-            'end_time' => $end,
+            'start_at' => $start,
+            'end_at' => $end,
             'status' => $status,
+        ]);
+    }
+
+    private function queue(User $user, Room $room, string $joinedAt): WaitingList
+    {
+        return WaitingList::create([
+            'user_id' => $user->id,
+            'room_type' => $room->room_type,
+            'room_id' => $room->id,
+            'wanted_start' => '2026-11-12 13:00:00',
+            'wanted_end' => '2026-11-12 15:00:00',
+            'party_size' => 4,
+            'joined_at' => $joinedAt,
         ]);
     }
 }

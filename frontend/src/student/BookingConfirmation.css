@@ -31,3 +31,14 @@
 }
 .btn-primary { background: #75243a; color: #fff; border: none; }
 .btn-secondary { background: #fff; color: #75243a; border: 1px solid #75243a; }
+.booking-confirmation h1 { margin: 0 0 6px; font-weight: 400; }
+.confirm-row strong { text-align: right; overflow-wrap: anywhere; }
+.confirm-note {
+  margin: 16px 0 0; padding: 12px 14px; border-left: 3px solid #b49250;
+  border-radius: 0 10px 10px 0; background: #faf5e9; color: #756446;
+  font-size: 13px; line-height: 1.7; text-align: left;
+}
+.confirm-actions button:focus-visible { outline: 3px solid #b49250; outline-offset: 2px; }
+.btn-primary:hover { background: #b49250; color: #30230e; }
+.btn-secondary:hover { background: #faf5e9; }
+@media (max-width: 480px) { .confirm-actions { flex-direction: column; } }

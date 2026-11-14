@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StudentDashboardController;
 use Illuminate\Http\Request;
@@ -26,4 +27,16 @@ Route::get('/rooms/{room}', [RoomController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/dashboard', [StudentDashboardController::class, 'index']);
+});
+
+// Booking (students must be signed in)
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/rooms/{type}/availability', [BookingController::class, 'availability'])
+        ->where('type', '[a-z_0-9]+');
+
+    Route::middleware('role:student')->group(function () {
+        Route::get('/bookings/mine', [BookingController::class, 'mine']);
+        Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:20,1');
+        Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+    });
 });

@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./MyBookings.css";
+import { useAuth } from "../auth/AuthContext";
+import { USE_MOCK_AUTH } from "../auth/authService";
+import { cancelBooking, formatBookingDate, formatTimeRange, listMyBookings } from "./bookingService";
 
 const sampleBookings = [
   {
@@ -10,6 +13,7 @@ const sampleBookings = [
     time: "10:00 AM – 12:00 PM",
     status: "Confirmed",
     tab: "Upcoming",
+    canCancel: true,
   },
   {
     id: "BK-002",
@@ -19,6 +23,7 @@ const sampleBookings = [
     time: "2:00 PM – 4:00 PM",
     status: "Confirmed",
     tab: "Upcoming",
+    canCancel: true,
   },
   {
     id: "BK-003",
@@ -40,27 +45,89 @@ const sampleBookings = [
   },
 ];
 
+const STATUS_LABELS = {
+  held: "Held",
+  confirmed: "Confirmed",
+  checked_in: "Checked in",
+  checked_out: "Completed",
+  cancelled: "Cancelled",
+  no_show: "No show",
+};
+
+const TAB_NAMES = { upcoming: "Upcoming", completed: "Completed", cancelled: "Cancelled" };
+
+/** Turns a booking from the API into the shape the cards below use. */
+function toCard(booking) {
+  const status =
+    booking.tab === "completed" && booking.status === "confirmed" ? "Completed" : STATUS_LABELS[booking.status] ?? booking.status;
+  return {
+    id: booking.reference,
+    apiId: booking.id,
+    room: booking.room_name,
+    category: booking.room_group ?? booking.room_type,
+    date: formatBookingDate(booking.date),
+    time: formatTimeRange(booking.start_time, booking.end_time),
+    status,
+    tab: TAB_NAMES[booking.tab] ?? "Upcoming",
+    canCancel: booking.can_cancel,
+  };
+}
+
 export default function MyBookings() {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState("Upcoming");
-  const [bookings, setBookings] = useState(sampleBookings);
+  const [bookings, setBookings] = useState(USE_MOCK_AUTH ? sampleBookings : []);
+  const [loading, setLoading] = useState(!USE_MOCK_AUTH);
+  const [loadError, setLoadError] = useState("");
+  const [cancelling, setCancelling] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
+
+  const load = useCallback(async () => {
+    if (USE_MOCK_AUTH) return;
+    setLoading(true);
+    setLoadError("");
+    try {
+      setBookings((await listMyBookings(token)).map(toCard));
+    } catch (err) {
+      setLoadError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const visibleBookings = bookings.filter(
     (booking) => booking.tab === activeTab
   );
 
-  function cancelBooking(id) {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === id
-          ? { ...booking, status: "Cancelled", tab: "Cancelled" }
-          : booking
-      )
-    );
+  async function cancelBookingCard(booking) {
+    if (USE_MOCK_AUTH) {
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === booking.id ? { ...item, status: "Cancelled", tab: "Cancelled" } : item
+        )
+      );
+      setDialog(null);
+      setNotice("Sample booking cancelled. View it under Cancelled.");
+      return;
+    }
 
-    setDialog(null);
-    setNotice("Sample booking cancelled. View it under Cancelled.");
+    setCancelling(true);
+    try {
+      const updated = toCard(await cancelBooking(token, booking.apiId));
+      setBookings((current) => current.map((item) => (item.apiId === updated.apiId ? updated : item)));
+      setNotice(`Booking ${updated.id} cancelled. The room is free for other students again.`);
+      setDialog(null);
+    } catch (err) {
+      setNotice(err.message);
+      setDialog(null);
+    } finally {
+      setCancelling(false);
+    }
   }
 
   return (
@@ -75,7 +142,7 @@ export default function MyBookings() {
           </p>
         </div>
 
-        <span className="booking-preview-label">Sample data</span>
+        {USE_MOCK_AUTH && <span className="booking-preview-label">Sample data</span>}
       </div>
 
       <div className="booking-guidance">
@@ -116,8 +183,22 @@ export default function MyBookings() {
         {notice}
       </p>
 
+      {loadError && (
+        <div className="booking-empty" role="alert">
+          <h2>Couldn't load your bookings</h2>
+          <p>{loadError}</p>
+          <button type="button" className="booking-button secondary" onClick={load}>
+            Try again
+          </button>
+        </div>
+      )}
+
       <div className="booking-list">
-        {visibleBookings.length === 0 ? (
+        {loading ? (
+          <div className="booking-empty">
+            <p>Loading your bookings…</p>
+          </div>
+        ) : loadError ? null : visibleBookings.length === 0 ? (
           <div className="booking-empty">
             <h2>No {activeTab.toLowerCase()} bookings</h2>
             <p>Your reservations will appear here.</p>
@@ -178,6 +259,7 @@ export default function MyBookings() {
                     Request Extension
                   </button>
 
+                  {booking.canCancel && (
                   <button
                     type="button"
                     className="booking-button cancel"
@@ -187,6 +269,7 @@ export default function MyBookings() {
                   >
                     Cancel Booking
                   </button>
+                  )}
                 </div>
               )}
             </article>
@@ -194,10 +277,12 @@ export default function MyBookings() {
         )}
       </div>
 
-      <p className="booking-footnote">
-        Frontend preview. Changes are temporary and reset when the page
-        reloads or this page is reopened.
-      </p>
+      {USE_MOCK_AUTH && (
+        <p className="booking-footnote">
+          Demo login: these are sample bookings. Set VITE_USE_MOCK_AUTH=false
+          and sign in to see your real bookings.
+        </p>
+      )}
 
       {dialog && (
         <div
@@ -231,7 +316,8 @@ export default function MyBookings() {
 
             {dialog.type === "cancel" ? (
               <p>
-                This preview will move the booking to the Cancelled list.
+                The room will be released so other students can book it.
+                This can't be undone.
               </p>
             ) : dialog.type === "qr" ? (
               <div className="qr-placeholder">
@@ -263,9 +349,10 @@ export default function MyBookings() {
                 <button
                   type="button"
                   className="booking-button primary"
-                  onClick={() => cancelBooking(dialog.booking.id)}
+                  disabled={cancelling}
+                  onClick={() => cancelBookingCard(dialog.booking)}
                 >
-                  Confirm Cancellation
+                  {cancelling ? "Cancelling…" : "Confirm Cancellation"}
                 </button>
               )}
             </div>
