@@ -14,8 +14,14 @@
  * Matches the issue_reports table in database/database.sql.
  */
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000/api").replace(/\/$/, "");
-export const USE_MOCK_REPORTS = import.meta.env.VITE_USE_MOCK_REPORTS !== "false";
+import { USE_MOCK_AUTH } from "../auth/authService";
+
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api").replace(/\/$/, "");
+
+// Sample data only in demo-login mode, unless VITE_USE_MOCK_REPORTS says otherwise.
+export const USE_MOCK_REPORTS = import.meta.env.VITE_USE_MOCK_REPORTS
+  ? import.meta.env.VITE_USE_MOCK_REPORTS === "true"
+  : USE_MOCK_AUTH;
 
 export const ISSUE_CATEGORIES = [
   { id: "lighting", label: "Lighting", icon: "💡" },

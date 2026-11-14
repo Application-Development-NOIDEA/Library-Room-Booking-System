@@ -7,6 +7,7 @@ use App\Http\Controllers\StudentDashboardController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WaitingListController;
+use App\Http\Controllers\IssueReportController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -46,4 +47,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/waiting-list/{waitingList}/accept', [WaitingListController::class, 'accept']);
         Route::post('/waiting-list/{waitingList}/leave', [WaitingListController::class, 'leave']);
     });
+    
+        // Report an Issue
+        Route::get('/reports/bookings', [IssueReportController::class, 'bookings']);
+        Route::get('/reports/mine', [IssueReportController::class, 'mine']);
+        Route::post('/reports', [IssueReportController::class, 'store'])->middleware('throttle:10,1');
 });
+
+        
