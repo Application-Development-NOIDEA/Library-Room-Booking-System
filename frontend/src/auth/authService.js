@@ -1,7 +1,6 @@
 
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
-export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api").replace(/\/$/, "");export const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === "true";
 
 /* ---------- Token storage ---------- */
 

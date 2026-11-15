@@ -1,8 +1,9 @@
+import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import "./MyBookings.css";
 import { useAuth } from "../auth/AuthContext";
 import { USE_MOCK_AUTH } from "../auth/authService";
-import { cancelBooking, formatBookingDate, formatTimeRange, listMyBookings } from "./bookingService";
+import {cancelBooking,formatBookingDate,formatTimeRange,listMyBookings,getBookingQr,} from "./bookingService";
 
 const sampleBookings = [
   {
@@ -82,7 +83,7 @@ export default function MyBookings() {
   const [cancelling, setCancelling] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
-
+  const [qrState, setQrState] = useState({loading: false,token: "",error: "",});
   const load = useCallback(async () => {
     if (USE_MOCK_AUTH) return;
     setLoading(true);
@@ -104,7 +105,7 @@ export default function MyBookings() {
     (booking) => booking.tab === activeTab
   );
 
-  async function cancelBookingCard(booking) {
+  async function cancelBookingCard(booking) { 
     if (USE_MOCK_AUTH) {
       setBookings((current) =>
         current.map((item) =>
@@ -242,8 +243,7 @@ export default function MyBookings() {
                     type="button"
                     className="booking-button primary"
                     onClick={() =>
-                      setDialog({ type: "qr", booking })
-                    }
+                      openQr(booking)}
                   >
                     View QR
                     <span aria-hidden="true">↗</span>
@@ -319,15 +319,48 @@ export default function MyBookings() {
                 The room will be released so other students can book it.
                 This can't be undone.
               </p>
-            ) : dialog.type === "qr" ? (
-              <div className="qr-placeholder">
-                <strong>QR code pending integration</strong>
-                <span>
-                  A booking-specific QR code will be provided by the
-                  QR feature.
-                </span>
-              </div>
-            ) : (
+           
+) : dialog.type === "qr" ? (
+  <div className="qr-placeholder">
+    {qrState.loading ? (
+      <p>Generating your booking QR code...</p>
+    ) : qrState.error ? (
+      <p role="alert">{qrState.error}</p>
+    ) : qrState.token ? (
+      <>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            margin: "16px 0",
+          }}
+        >
+          <QRCodeSVG
+            value={qrState.token}
+            size={220}
+            level="M"
+            marginSize={4}
+          />
+        </div>
+
+        <strong>{dialog.booking.id}</strong>
+
+        <p>
+          Show this QR code to library staff
+          when checking in.
+        </p>
+
+        <small>
+          Keep this QR code private.
+          Generating another one invalidates this code.
+        </small>
+      </>
+    ) : (
+      <p>QR code is unavailable.</p>
+    )}
+  </div>
+) : (
+
               <p>
                 Extensions depend on room availability and queue priority.
                 Availability checking and request submission will be

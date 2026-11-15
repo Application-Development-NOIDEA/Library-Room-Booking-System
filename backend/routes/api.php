@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\RoomController;
@@ -42,9 +43,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:20,1');
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
 
+        // Generate a secure booking QR token
+        Route::post('/bookings/{booking}/qr', [BookingQrController::class, 'issue'])
+        ->middleware('throttle:10,1');
+
         // Waiting list
         Route::get('/waiting-list/mine', [WaitingListController::class, 'mine']);
         Route::post('/waiting-list', [WaitingListController::class, 'store'])->middleware('throttle:20,1');
+        Route::post('/bookings/{booking}/qr', [BookingQrController::class, 'issue'])
+    ->middleware('throttle:10,1');
         Route::post('/waiting-list/{waitingList}/accept', [WaitingListController::class, 'accept']);
         Route::post('/waiting-list/{waitingList}/leave', [WaitingListController::class, 'leave']);
     });
