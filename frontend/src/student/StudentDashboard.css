@@ -430,3 +430,77 @@
     transition: none !important;
   }
 }
+
+/* ---------- Live data states ---------- */
+
+.student-dashboard .dash-refresh {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid var(--dash-border);
+  border-radius: 20px;
+  background: white;
+  color: var(--dash-gold-dark);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.student-dashboard .dash-refresh:disabled {
+  color: var(--dash-muted);
+  cursor: default;
+}
+
+.student-dashboard .dash-loading {
+  margin-top: 28px;
+  padding: 48px 24px;
+  border: 1px dashed #dcd5df;
+  border-radius: 18px;
+  background: white;
+  color: var(--dash-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.student-dashboard .dash-error {
+  margin-top: 28px;
+  padding: 24px;
+  border: 1px solid #f0c9c6;
+  border-radius: 16px;
+  background: #fff8f7;
+  color: #8a1f17;
+}
+
+.student-dashboard .dash-error p {
+  margin: 8px 0 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.student-dashboard .dash-error .dash-button.primary {
+  background: var(--dash-maroon);
+  color: white;
+}
+
+.student-dashboard .dash-inline-error {
+  margin: 16px 0 0;
+  color: #8a1f17;
+  font-size: 12px;
+}
+
+.student-dashboard .dash-empty {
+  color: var(--dash-muted);
+  font-size: 13px;
+}
+
+.student-dashboard .dash-notifications time {
+  display: block;
+  margin-top: 4px;
+  color: #a39ba6;
+  font-size: 11px;
+}
+
+.student-dashboard .dash-notifications li.is-unread strong::after {
+  content: " •";
+  color: var(--dash-maroon);
+}

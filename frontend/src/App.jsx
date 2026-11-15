@@ -5,6 +5,8 @@ import WaitingList from "./student/WaitingList";
 import StudentDashboard from "./student/StudentDashboard";
 import BookingConfirmation from "./student/BookingConfirmation";
 import BrowseRooms from "./student/BrowseRooms";
+import BookRoom from "./student/BookRoom";
+import ReportIssue from "./student/ReportIssue";
 import Profile, { campusName } from "./student/Profile";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import {
@@ -19,25 +21,6 @@ import {
    To preview a page while building it, change this to that page's name
    (for example "rooms" or "booking-confirmation"), then change it back to "dashboard". */
 const START_PAGE = "dashboard";
-
-/* Placeholder text for pages that aren't built yet */
-const pages = {
-  rooms: {
-    title: "Browse Rooms",
-    description: "Explore spaces for individual and group study.",
-    heading: "Room directory",
-    content:
-      "Carrel rooms, discussion rooms and meeting rooms will appear here.",
-  },
-
-  feedback: {
-    title: "Report an Issue",
-    description: "Help improve library rooms and facilities.",
-    heading: "Facility issue report",
-    content:
-      "The form for reporting room facility problems will appear here.",
-  },
-};
 
 /* Reset links in the email look like: /reset-password?token=abc123 */
 function readResetToken() {
@@ -118,11 +101,9 @@ function AppContent() {
 
 function StudentApp({ user, onLogout }) {
   const [activePage, setActivePage] = useState(START_PAGE);
-  const page = pages[activePage] ?? pages.rooms;
 
-  // The booking shown on the confirmation page.
-  // Later: call setLastBooking(newBooking) and setActivePage("booking-confirmation")
-  // right after a booking is made. While it is null, sample data is shown.
+  // The room type picked on Browse Rooms, and the booking just made.
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [lastBooking, setLastBooking] = useState(null);
 
   // Profile extras (programme, year, campus) are saved per user in this browser
@@ -154,13 +135,27 @@ function StudentApp({ user, onLogout }) {
 
   function renderPage() {
     switch (activePage) {
-      case "dashboard":
+      case "rooms":
         return (
-          <StudentDashboard onNavigate={setActivePage} userName={profile.fullName} userId={user.id} />
+          <BrowseRooms
+            onBook={(room) => {
+              setSelectedRoom(room);
+              setActivePage("book");
+            }}
+          />
         );
 
-      case "rooms":
-        return <BrowseRooms />;
+      case "book":
+        return (
+          <BookRoom
+            room={selectedRoom}
+            onBack={() => setActivePage("rooms")}
+            onBooked={(booking) => {
+              setLastBooking(booking);
+              setActivePage("booking-confirmation");
+            }}
+          />
+        );
 
       case "bookings":
         return <MyBookings />;
@@ -168,11 +163,13 @@ function StudentApp({ user, onLogout }) {
       case "waiting-list":
         return <WaitingList />;
 
+      case "feedback":
+        return <ReportIssue />;
+
       case "booking-confirmation":
         return (
           <BookingConfirmation
-            booking={lastBooking ?? undefined}
-            userName={profile.fullName}
+            booking={lastBooking}
             onViewBookings={() => setActivePage("bookings")}
             onBookAnother={() => setActivePage("rooms")}
           />
@@ -181,27 +178,20 @@ function StudentApp({ user, onLogout }) {
       case "profile":
         return <Profile profile={profile} onSave={setProfile} onLogout={onLogout} />;
 
+      case "dashboard":
       default:
         return (
-          <>
-            <p className="page-eyebrow">STUDENT WORKSPACE</p>
-
-            <h1 className="page-title">{page.title}</h1>
-
-            <p className="page-description">{page.description}</p>
-
-            <section className="content-card">
-              <h2>{page.heading}</h2>
-              <p>{page.content}</p>
-            </section>
-          </>
+          <StudentDashboard onNavigate={setActivePage} userName={profile.fullName} userId={user.id} />
         );
     }
   }
 
+  // The booking form and confirmation belong to "Browse Rooms" in the sidebar
+  const sidebarPage = ["book", "booking-confirmation"].includes(activePage) ? "rooms" : activePage;
+
   return (
     <SharedLayout
-      activePage={activePage}
+      activePage={sidebarPage}
       onNavigate={setActivePage}
       onLogout={onLogout}
       userName={profile.fullName}

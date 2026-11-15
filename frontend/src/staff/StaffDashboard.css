@@ -95,3 +95,7 @@
 .staff-signin { max-width:500px; margin:20px auto; } .staff-signin form { display:grid; gap:16px; margin-top:20px; } .staff-signin label { display:grid; gap:7px; font-size:13px; }
 
 .staff-camera {margin:0 0 18px;} .staff-camera-video { display:block; width:min(340px,100%); aspect-ratio:4/3; object-fit:cover; background:#111; border-radius:12px; margin-top:12px;}
+.staff-status--no-show, .staff-status--held { background:#fdeaea; color:#a12626; }
+.staff-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:14px; }
+.staff-toolbar label { display:flex; align-items:center; gap:6px; font-size:13px; }
+.staff-toolbar .staff-check { white-space:nowrap; }

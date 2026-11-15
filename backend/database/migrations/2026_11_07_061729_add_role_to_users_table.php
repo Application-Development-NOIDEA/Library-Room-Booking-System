@@ -1,4 +1,3 @@
-
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -26,6 +25,12 @@ return new class extends Migration
                       ->default('student');
             }
         });
+
+        // The check below uses Postgres-only tables (pg_constraint).
+        // Skip it on SQLite, which the automated tests use.
+        if (DB::getDriverName() !== 'pgsql') {
+            return;
+        }
 
         // Ensure only student and staff roles are allowed.
         $constraint = DB::selectOne("
