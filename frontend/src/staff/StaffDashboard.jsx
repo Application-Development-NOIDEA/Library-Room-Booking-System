@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { staffApi, API_MODE, normalize } from './staffApi';
+import CameraQrScanner from './CameraQrScanner';
 import './StaffDashboard.css';
 
 // FRONTEND DEMO DATA ONLY. Replace it with authenticated Laravel API calls.
@@ -19,6 +21,9 @@ const initialWaitlist = [
   { id: 'WL-022', name: 'Student E', type: 'Discussion', time: '14:00–16:00', joined: '09:14', status: 'Waiting' },
   { id: 'WL-023', name: 'Student F', type: 'Carrel', time: '10:00–12:00', joined: '09:35', status: 'Waiting' },
 ];
+const initialExtensions = [
+  { id: 'EX-01', booking_id: 'LB-2026-1043', student: 'Student B', room: 'C01', requested_end: '14:00', status: 'Pending' },
+];
 const initialReports = [
   { id: 'IR-101', room: 'D01', category: 'Air conditioning', description: 'Air conditioning is not cooling the room.', status: 'Submitted', date: TODAY },
   { id: 'IR-102', room: 'D01', category: 'Air conditioning', description: 'Room feels very warm during group study.', status: 'Submitted', date: TODAY },
@@ -32,6 +37,7 @@ const navigation = [
   ['checkin', '▣', 'QR / Check-in Desk'],
   ['rooms', '▥', 'Room Management'],
   ['waitlist', '◷', 'Waiting List'],
+  ['extensions', '↗', 'Extensions'],
   ['reports', '✎', 'Issue Reports'],
   ['analyzer', '✦', 'AI Report Analyzer'],
 ];
@@ -40,10 +46,18 @@ const statusClass = (value) => `staff-status staff-status--${String(value).toLow
 
 export default function StaffDashboard() {
   const [tab, setTab] = useState('dashboard');
-  const [rooms, setRooms] = useState(initialRooms);
-  const [bookings, setBookings] = useState(initialBookings);
-  const [waitlist, setWaitlist] = useState(initialWaitlist);
-  const [reports, setReports] = useState(initialReports);
+  const [rooms, setRooms] = useState(API_MODE ? [] : initialRooms);
+  const [bookings, setBookings] = useState(API_MODE ? [] : initialBookings);
+  const [waitlist, setWaitlist] = useState(API_MODE ? [] : initialWaitlist);
+  const [reports, setReports] = useState(API_MODE ? [] : initialReports);
+  const [extensions, setExtensions] = useState(API_MODE ? [] : initialExtensions);
+  const [loading, setLoading] = useState(API_MODE);
+  const [serverError, setServerError] = useState('');
+  const [roomOfferChoices, setRoomOfferChoices] = useState({});
+  const [verificationMatric, setVerificationMatric] = useState('');
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
   const [search, setSearch] = useState('');
   const [qrInput, setQrInput] = useState('');
   const [selectedBookingId, setSelectedBookingId] = useState('');
@@ -56,16 +70,71 @@ export default function StaffDashboard() {
   const filterBookings = useMemo(() => bookings.filter((b) => [b.id, b.student, b.matric, b.room, b.status].join(' ').toLowerCase().includes(search.toLowerCase())), [bookings, search]);
   const tabName = navigation.find((item) => item[0] === tab)?.[2] || 'Dashboard';
 
+  async function refresh() {
+    if (!API_MODE) return;
+    try {
+      const data = normalize(await staffApi.snapshot());
+      setRooms(data.rooms); setBookings(data.bookings); setWaitlist(data.waitlist);
+      setReports(data.reports); setExtensions(data.extensions);
+      setServerError('');
+    } catch (error) {
+      setServerError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (API_MODE) { refresh(); }
+  }, []);
+
+  async function handleLogin(event) {
+    event.preventDefault(); setLoggingIn(true);
+    try { await staffApi.login(loginEmail, loginPassword); setLoginPassword(''); await refresh(); }
+    catch (error) { setServerError(error.message); }
+    finally { setLoggingIn(false); }
+  }
+
+  async function handleLogout() {
+    try { await staffApi.logout(); setServerError('Not signed in. Log in as library staff before using API mode.'); setRooms([]); setBookings([]); setWaitlist([]); setReports([]); setExtensions([]); }
+    catch(error) { flash(error.message); }
+  }
+
+  async function perform(request, message) {
+    try {
+      await request();
+      await refresh();
+      flash(message);
+    } catch (error) { flash(error.message); }
+  }
+
   function flash(message) {
     setNotification(message);
   }
 
-  function changeBookingStatus(id, nextStatus) {
+  async function changeBookingStatus(id, nextStatus) {
+    if (API_MODE) {
+      const credentials = verificationMatric.trim()
+        ? {matric: verificationMatric.trim()} : {qr_token: qrInput.trim()};
+      await perform(() => nextStatus === 'Checked In' ? staffApi.checkIn(id, credentials) : staffApi.checkOut(id, credentials), `Booking ${id} updated.`);
+      return;
+    }
     setBookings((previous) => previous.map((item) => item.id === id ? { ...item, status: nextStatus } : item));
     flash(`${id} marked ${nextStatus}. Demo data only.`);
   }
 
-  function lookupBooking() {
+  async function lookupBooking() {
+    if (API_MODE) {
+      try {
+        const data = await staffApi.lookup(qrInput.trim());
+        const booking = normalize({bookings: [data.booking]}).bookings[0];
+        setBookings(previous => [...previous.filter(x => x.id !== booking.id), booking]);
+        setSelectedBookingId(booking.id);
+        setVerificationMatric('');
+        flash('Booking found. Verify student identity and key handover before check-in.');
+      } catch (error) { setSelectedBookingId(''); flash(error.message); }
+      return;
+    }
     const id = qrInput.trim().toUpperCase();
     const matching = bookings.find((item) => item.id.toUpperCase() === id);
     if (!matching) {
@@ -77,24 +146,46 @@ export default function StaffDashboard() {
     flash('Booking found. Verify student identity and booking details before proceeding.');
   }
 
-  function toggleRoom(code) {
+  async function toggleRoom(code) {
+    if (API_MODE) {
+      const room = rooms.find(r => r.code === code);
+      if (!room) return;
+      await perform(() => staffApi.setRoomStatus(room.id, room.status === 'Active' ? 'maintenance' : 'active'), `Room ${code} updated.`);
+      return;
+    }
     setRooms((previous) => previous.map((r) => r.code === code ? { ...r, status: r.status === 'Active' ? 'Maintenance' : 'Active' } : r));
     flash(`Room ${code} status changed (demo only).`);
   }
 
-  function issueOffer(id) {
+  async function issueOffer(id) {
+    if (API_MODE) {
+      const roomId = roomOfferChoices[id];
+      if (!roomId) { flash('Select an eligible room before offering it.'); return; }
+      await perform(() => staffApi.offerRoom(id, Number(roomId)), 'Room offer created.');
+      return;
+    }
     const entry = waitlist.find((item) => item.id === id);
     if (!entry || entry.status !== 'Waiting') return;
     setWaitlist((previous) => previous.map((item) => item.id === id ? { ...item, status: 'Offered' } : item));
     flash(`${id} marked Offered. A real offer needs a server-side room hold and 10-minute expiry.`);
   }
 
-  function updateReport(id, status) {
+  async function updateReport(id, status) {
+    if (API_MODE) {
+      const code = status.toLowerCase().replace(/ /g, '_');
+      await perform(() => staffApi.setReportStatus(id, code), `Report ${id} updated.`);
+      return;
+    }
     setReports((previous) => previous.map((r) => r.id === id ? { ...r, status } : r));
     flash(`${id} updated to ${status} (demo only).`);
   }
 
-  function generateSummary() {
+  async function generateSummary() {
+    if (API_MODE) {
+      try { setSummary(await staffApi.analysis()); flash('Report summary generated from stored facility reports.'); }
+      catch(error) { flash(error.message); }
+      return;
+    }
     const byCategory = {};
     const byRoom = {};
     reports.forEach((report) => {
@@ -110,8 +201,12 @@ export default function StaffDashboard() {
     flash('Demo analysis generated from sample issue reports (not a live AI model).');
   }
 
-  function registerWalkIn(event) {
+  async function registerWalkIn(event) {
     event.preventDefault();
+    if (API_MODE) {
+      await perform(() => staffApi.registerWalkIn({...walkIn, date: TODAY}), 'Walk-in reservation created.');
+      return;
+    }
     if (!walkIn.student.trim() || !walkIn.matric.trim()) { flash('Enter the student name and matric number.'); return; }
     if (walkIn.start >= walkIn.end) { flash('End time must be later than start time.'); return; }
     const selected = rooms.find((r) => r.code === walkIn.room);
@@ -122,6 +217,17 @@ export default function StaffDashboard() {
     setBookings((items) => [...items, { id, student: walkIn.student.trim(), matric: walkIn.matric.trim(), room: walkIn.room, start: walkIn.start, end: walkIn.end, date: TODAY, status: 'Confirmed', source: 'Walk-in' }]);
     setWalkIn((form) => ({ ...form, student: '', matric: '' }));
     flash(`Walk-in record ${id} created locally. Real validation must happen in Laravel/PostgreSQL.`);
+  }
+
+  async function markNoShow(id) {
+    if (API_MODE) { await perform(() => staffApi.noShow(id), 'No-show recorded.'); return; }
+    changeBookingStatus(id, 'No Show');
+  }
+
+  async function decideExtension(id, decision) {
+    if (API_MODE) { await perform(() => staffApi.setExtensionDecision(id, decision), `Extension ${decision}.`); return; }
+    setExtensions(items => items.map(x => x.id === id ? {...x, status: decision === 'approve' ? 'Approved' : 'Rejected'} : x));
+    flash(`Extension ${decision}d (demo only).`);
   }
 
   return (
@@ -140,13 +246,16 @@ export default function StaffDashboard() {
       </aside>
 
       <div className="staff-main">
-        <header className="staff-topbar"><span>Library Room Booking System</span><div className="staff-profile"><span className="staff-avatar">LS</span><span><strong>Library Staff</strong><small>Front Desk</small></span></div></header>
+        <header className="staff-topbar"><span>Library Room Booking System</span><div className="staff-profile">{API_MODE && <button type="button" className="staff-mini-button" onClick={handleLogout}>Sign out</button>}<span className="staff-avatar">LS</span><span><strong>Library Staff</strong><small>Front Desk</small></span></div></header>
         <main className="staff-content">
           <p className="staff-eyebrow">STAFF WORKSPACE</p><h1>{tabName}</h1>
-          <p className="staff-lead">{tab === 'dashboard' ? 'Manage reservations, keys, waiting lists and library facilities in one place.' : 'Interactive demo using sample records; Laravel and Supabase are not connected yet.'}</p>
+          <p className="staff-lead">{tab === 'dashboard' ? 'Manage reservations, keys, waiting lists and library facilities in one place.' : 'Reservations and facility management for authorized library staff.'}</p>
+          <div className="staff-mode"><span className={API_MODE ? 'staff-live-indicator' : 'staff-demo-indicator'}>{API_MODE ? 'Laravel API mode' : 'Local demo mode'}</span>{API_MODE && <button type="button" className="staff-mini-button" onClick={refresh}>Refresh records</button>}{loading && ' Loading...'}</div>
+          {serverError && <div className="staff-notice" role="alert">{serverError} — API mode will not silently substitute sample data.</div>}
+          {API_MODE && serverError && <section className="staff-panel staff-signin"><h2>Library Staff Sign In</h2><p className="staff-muted">Use a staff account created by your team administrator. Sign-in is handled by Laravel Sanctum.</p><form onSubmit={handleLogin}><label>Email<input className="staff-input" type="email" required value={loginEmail} onChange={e => setLoginEmail(e.target.value)} autoComplete="username" /></label><label>Password<input className="staff-input" type="password" required value={loginPassword} onChange={e => setLoginPassword(e.target.value)} autoComplete="current-password" /></label><button className="staff-primary" type="submit" disabled={loggingIn}>{loggingIn ? 'Signing in...' : 'Sign in as staff'}</button></form></section>}
           {notification && <div className="staff-notice" role="status">{notification}<button type="button" onClick={() => setNotification('')} aria-label="Dismiss message">×</button></div>}
 
-          {tab === 'dashboard' && <>
+          {!(API_MODE && (serverError || loading)) && tab === 'dashboard' && <>
             <div className="staff-stats">
               <Stat label="Today's Bookings" value={bookings.length} helper="Sample reservations" />
               <Stat label="Checked In" value={bookings.filter((b) => b.status === 'Checked In').length} helper="Key currently issued" />
@@ -164,11 +273,11 @@ export default function StaffDashboard() {
             </div>
           </>}
 
-          {tab === 'reservations' && <>
+          {!(API_MODE && (serverError || loading)) && tab === 'reservations' && <>
             <section className="staff-panel"><div className="staff-panel-heading"><h2>All Reservations</h2><input aria-label="Search bookings" className="staff-input" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name, room, booking ID..." /></div>
               <BookingTable bookings={filterBookings} rooms={rooms} onSelect={(id) => { setSelectedBookingId(id); setTab('checkin'); }} />
             </section>
-            <section className="staff-panel staff-panel-spaced"><h2>Register a Walk-in (Demo)</h2><p className="staff-muted">For a future hybrid system. This form simulates adding a reservation, but the backend must enforce booking conflicts before saving.</p>
+            <section className="staff-panel staff-panel-spaced"><h2>Register a Walk-in (Demo)</h2><p className="staff-muted">Register a student visiting the front desk. In API mode the student account must already exist, and Laravel enforces booking conflicts.</p>
               <form className="staff-form-grid" onSubmit={registerWalkIn}>
                 <label>Student name<input className="staff-input" value={walkIn.student} onChange={(e) => setWalkIn((x) => ({ ...x, student: e.target.value }))} placeholder="Student name" required /></label>
                 <label>Matric number<input className="staff-input" value={walkIn.matric} onChange={(e) => setWalkIn((x) => ({ ...x, matric: e.target.value }))} placeholder="A24CSXXXX" required /></label>
@@ -180,22 +289,25 @@ export default function StaffDashboard() {
             </section>
           </>}
 
-          {tab === 'checkin' && <section className="staff-panel"><h2>QR Check-in / Check-out</h2><p className="staff-muted">In this frontend demo, type a Booking ID as a stand-in for scanning a QR code. The actual camera scanner and token verification will be implemented later.</p>
-            <div className="staff-lookup"><input className="staff-input" aria-label="Booking ID" placeholder="Enter booking ID, e.g. LB-2026-1042" value={qrInput} onChange={(e) => setQrInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookupBooking(); }}/><button type="button" className="staff-primary" onClick={lookupBooking}>Find Booking</button><button type="button" className="staff-secondary" onClick={() => { setQrInput('LB-2026-1042'); setSelectedBookingId('LB-2026-1042'); }}>Try Sample</button></div>
-            {selectedBooking ? <div className="staff-detail-card"><div className="staff-panel-heading"><h3>{selectedBooking.id}</h3><span className={statusClass(selectedBooking.status)}>{selectedBooking.status}</span></div><dl><div><dt>Student</dt><dd>{selectedBooking.student}</dd></div><div><dt>Matric</dt><dd>{selectedBooking.matric}</dd></div><div><dt>Room</dt><dd>{roomLabel(selectedBooking.room, rooms)}</dd></div><div><dt>Date & time</dt><dd>{selectedBooking.date} · {selectedBooking.start}–{selectedBooking.end}</dd></div></dl><p className="staff-muted">Verify the student's ID and confirm key handover/return before updating the status.</p><div className="staff-button-row"><button type="button" className="staff-primary" disabled={selectedBooking.status !== 'Confirmed'} onClick={() => changeBookingStatus(selectedBooking.id, 'Checked In')}>Confirm Check-in / Key Issued</button><button type="button" className="staff-secondary" disabled={selectedBooking.status !== 'Checked In'} onClick={() => changeBookingStatus(selectedBooking.id, 'Checked Out')}>Confirm Check-out / Key Returned</button></div></div> : <div className="staff-empty">Enter a Booking ID or click Try Sample to display a reservation.</div>}
+          {!(API_MODE && (serverError || loading)) && tab === 'checkin' && <section className="staff-panel"><h2>QR Check-in / Check-out</h2><p className="staff-muted">Enter a Booking ID or scan/paste the student's QR token. API mode verifies records on Laravel. For manual ID lookup, confirm the student matric number before updating key status.</p>
+            <div className="staff-lookup"><input className="staff-input" aria-label="Booking ID" placeholder="Enter booking ID, e.g. LB-2026-1042" value={qrInput} onChange={(e) => setQrInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') lookupBooking(); }}/><button type="button" className="staff-primary" onClick={lookupBooking}>Find Booking</button>{!API_MODE && <button type="button" className="staff-secondary" onClick={() => { setQrInput('LB-2026-1042'); setSelectedBookingId('LB-2026-1042'); }}>Try Sample</button>}</div>
+            <CameraQrScanner onCode={(value) => { setQrInput(value); setSelectedBookingId(''); flash('QR captured. Click Find Booking to verify.'); }} />
+            {selectedBooking ? <div className="staff-detail-card"><div className="staff-panel-heading"><h3>{selectedBooking.id}</h3><span className={statusClass(selectedBooking.status)}>{selectedBooking.status}</span></div><dl><div><dt>Student</dt><dd>{selectedBooking.student}</dd></div><div><dt>Matric</dt><dd>{selectedBooking.matric}</dd></div><div><dt>Room</dt><dd>{roomLabel(selectedBooking.room, rooms)}</dd></div><div><dt>Date & time</dt><dd>{selectedBooking.date} · {selectedBooking.start}–{selectedBooking.end}</dd></div></dl><p className="staff-muted">Verify the student's ID and confirm key handover/return before updating the status.</p>{API_MODE && <label className="staff-verify-field">Student matric number (for manual Booking ID verification)<input className="staff-input" value={verificationMatric} onChange={e => setVerificationMatric(e.target.value)} placeholder="Confirm student matric" /></label>}<div className="staff-button-row"><button type="button" className="staff-primary" disabled={selectedBooking.status !== 'Confirmed'} onClick={() => changeBookingStatus(selectedBooking.id, 'Checked In')}>Confirm Check-in / Key Issued</button><button type="button" className="staff-secondary" disabled={selectedBooking.status !== 'Checked In'} onClick={() => changeBookingStatus(selectedBooking.id, 'Checked Out')}>Confirm Check-out / Key Returned</button><button type="button" className="staff-secondary" disabled={selectedBooking.status !== 'Confirmed'} onClick={() => markNoShow(selectedBooking.id)}>Record No-show</button></div></div> : <div className="staff-empty">Enter a Booking ID or click Try Sample to display a reservation.</div>}
           </section>}
 
-          {tab === 'rooms' && <section className="staff-panel"><div className="staff-panel-heading"><h2>Rooms & Maintenance</h2><span className="staff-muted">{rooms.length} rooms</span></div><div className="staff-room-grid">{rooms.map((room) => <article className="staff-room" key={room.id}><div className="staff-panel-heading"><strong>{room.name}</strong><span className={statusClass(room.status)}>{room.status}</span></div><p>{room.type} · {room.floor}</p><p>Capacity: {room.capacity}</p><button type="button" className="staff-secondary" onClick={() => toggleRoom(room.code)}>{room.status === 'Active' ? 'Mark Maintenance' : 'Return to Active'}</button></article>)}</div></section>}
+          {!(API_MODE && (serverError || loading)) && tab === 'rooms' && <section className="staff-panel"><div className="staff-panel-heading"><h2>Rooms & Maintenance</h2><span className="staff-muted">{rooms.length} rooms</span></div><div className="staff-room-grid">{rooms.map((room) => <article className="staff-room" key={room.id}><div className="staff-panel-heading"><strong>{room.name}</strong><span className={statusClass(room.status)}>{room.status}</span></div><p>{room.type} · {room.floor}</p><p>Capacity: {room.capacity}</p><button type="button" className="staff-secondary" onClick={() => toggleRoom(room.code)}>{room.status === 'Active' ? 'Mark Maintenance' : 'Return to Active'}</button></article>)}</div></section>}
 
-          {tab === 'waitlist' && <section className="staff-panel"><h2>Same-Day Waiting List</h2><p className="staff-muted">Review requests in FCFS order. This demo changes the status only; real allocation must check capacity, dates, time conflicts and create a temporary hold on the server.</p><div className="staff-table-scroll"><table className="staff-table"><thead><tr><th>Position</th><th>Student</th><th>Room type</th><th>Time</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody>{waitlist.map((entry, index) => <tr key={entry.id}><td>#{index + 1}</td><td>{entry.name}<small>{entry.id}</small></td><td>{entry.type}</td><td>{entry.time}</td><td>{entry.joined}</td><td><span className={statusClass(entry.status)}>{entry.status}</span></td><td><button type="button" className="staff-mini-button" disabled={entry.status !== 'Waiting'} onClick={() => issueOffer(entry.id)}>Mark Offered (Demo)</button></td></tr>)}</tbody></table></div></section>}
+          {!(API_MODE && (serverError || loading)) && tab === 'extensions' && <section className="staff-panel"><h2>Booking Extension Requests</h2><p className="staff-muted">Approve only if no other confirmed booking or priority waiting-list request conflicts. Laravel rechecks availability when deciding.</p><div className="staff-table-scroll"><table className="staff-table"><thead><tr><th>Request</th><th>Booking</th><th>Student</th><th>Room</th><th>Requested end</th><th>Status</th><th>Action</th></tr></thead><tbody>{extensions.map(x => <tr key={x.id}><td>{x.id}</td><td>{x.booking_id}</td><td>{x.student}</td><td>{x.room}</td><td>{x.requested_end}</td><td><span className={statusClass(x.status)}>{x.status}</span></td><td><div className="staff-button-row"><button type="button" className="staff-mini-button" disabled={x.status !== 'Pending'} onClick={() => decideExtension(x.id, 'approve')}>Approve</button><button type="button" className="staff-mini-button" disabled={x.status !== 'Pending'} onClick={() => decideExtension(x.id, 'reject')}>Reject</button></div></td></tr>)}</tbody></table></div></section>}
 
-          {tab === 'reports' && <section className="staff-panel"><div className="staff-panel-heading"><h2>Student Facility Issue Reports</h2><span className="staff-muted">{reports.length} sample reports</span></div><div className="staff-table-scroll"><table className="staff-table"><thead><tr><th>Report</th><th>Room</th><th>Category</th><th>Description</th><th>Status</th></tr></thead><tbody>{reports.map((r) => <tr key={r.id}><td>{r.id}<small>{r.date}</small></td><td>{r.room}</td><td>{r.category}</td><td>{r.description}</td><td><select className="staff-input staff-select-small" aria-label={`Status for ${r.id}`} value={r.status} onChange={(e) => updateReport(r.id, e.target.value)}><option>Submitted</option><option>In Progress</option><option>Resolved</option></select></td></tr>)}</tbody></table></div></section>}
+          {!(API_MODE && (serverError || loading)) && tab === 'waitlist' && <section className="staff-panel"><h2>Same-Day Waiting List</h2><p className="staff-muted">Review same-day requests in FCFS order. In API mode, Laravel checks eligibility, time conflicts and creates a 10-minute room hold.</p><div className="staff-table-scroll"><table className="staff-table"><thead><tr><th>Position</th><th>Student</th><th>Room type</th><th>Time</th><th>Joined</th><th>Status</th><th>Action</th></tr></thead><tbody>{waitlist.map((entry, index) => <tr key={entry.id}><td>#{index + 1}</td><td>{entry.name}<small>{entry.id}</small></td><td>{entry.type}</td><td>{entry.time}</td><td>{entry.joined}</td><td><span className={statusClass(entry.status)}>{entry.status}</span></td><td>{API_MODE && <select className="staff-input staff-select-small" aria-label={`Room for ${entry.id}`} value={roomOfferChoices[entry.id] || ''} onChange={e => setRoomOfferChoices(s => ({...s, [entry.id]: e.target.value}))}><option value="">Select room</option>{rooms.filter(r => r.status === 'Active' && r.type === entry.type).map(r => <option key={r.id} value={r.id}>{r.code}</option>)}</select>}<button type="button" className="staff-mini-button" disabled={entry.status !== 'Waiting'} onClick={() => issueOffer(entry.id)}>{API_MODE ? 'Send Offer' : 'Mark Offered (Demo)'}</button></td></tr>)}</tbody></table></div></section>}
 
-          {tab === 'analyzer' && <section className="staff-panel"><div className="staff-panel-heading"><div><h2>AI Report Analyzer</h2><p className="staff-muted">Summarize student-submitted facility issues for staff review.</p></div><button type="button" className="staff-primary" onClick={generateSummary}>✦ Generate Demo Summary</button></div>
-            <div className="staff-ai-note"><strong>Prototype mode:</strong> This offline summary counts and groups sample reports using JavaScript; it does <strong>not</strong> call an AI model. Later, Laravel can securely call an AI API and return a reviewed summary.</div>
+          {!(API_MODE && (serverError || loading)) && tab === 'reports' && <section className="staff-panel"><div className="staff-panel-heading"><h2>Student Facility Issue Reports</h2><span className="staff-muted">{reports.length} sample reports</span></div><div className="staff-table-scroll"><table className="staff-table"><thead><tr><th>Report</th><th>Room</th><th>Category</th><th>Description</th><th>Status</th></tr></thead><tbody>{reports.map((r) => <tr key={r.id}><td>{r.id}<small>{r.date}</small></td><td>{r.room}</td><td>{r.category}</td><td>{r.description}</td><td><select className="staff-input staff-select-small" aria-label={`Status for ${r.id}`} value={r.status} onChange={(e) => updateReport(r.id, e.target.value)}><option>Submitted</option><option>In Progress</option><option>Resolved</option></select></td></tr>)}</tbody></table></div></section>}
+
+          {!(API_MODE && (serverError || loading)) && tab === 'analyzer' && <section className="staff-panel"><div className="staff-panel-heading"><div><h2>AI Report Analyzer</h2><p className="staff-muted">Summarize student-submitted facility issues for staff review.</p></div><button type="button" className="staff-primary" onClick={generateSummary}>✦ Generate Report Summary</button></div>
+            <div className="staff-ai-note"><strong>Analysis disclosure:</strong> This version uses deterministic counts and grouped reports (not an LLM). Laravel securely aggregates stored issues in API mode. AI-generated narrative summaries can be added after your team selects an AI provider and reviews privacy requirements.</div>
             {summary ? <div className="staff-ai-results"><h3>Facility issue overview</h3><p>{summary.count} reports analyzed. Most frequently reported issue: <strong>{summary.categories[0]?.[0] || 'None'}</strong>.</p><div className="staff-grid-two"><div className="staff-detail-card"><h3>Issues by category</h3>{summary.categories.map(([cat, count]) => <div className="staff-breakdown" key={cat}><span>{cat}</span><strong>{count}</strong></div>)}</div><div className="staff-detail-card"><h3>Recurring room issues</h3>{summary.recurring.length ? summary.recurring.map(([name, count]) => <p key={name}>{name}: <strong>{count} reports</strong></p>) : <p>No repeated room-category pairs detected in these reports.</p>}</div></div><p className="staff-muted">Suggested staff action: review the original reports, verify each issue and prioritize maintenance based on severity and operational policy.</p></div> : <div className="staff-empty">Click “Generate Demo Summary” to view grouped issues from the sample reports.</div>}
           </section>}
-          <footer className="staff-footer">NOIDEA · Universiti Teknologi Malaysia · Staff frontend prototype (sample data)</footer>
+          <footer className="staff-footer">NOIDEA · Universiti Teknologi Malaysia · {API_MODE ? 'Authenticated Laravel data' : 'Frontend demo (sample data)'}</footer>
         </main>
       </div>
     </div>
