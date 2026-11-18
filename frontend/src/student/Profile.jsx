@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Profile.css";
+import { USE_MOCK_AUTH } from "../auth/authService";
 
 export const CAMPUSES = [
   { id: "jb", name: "UTM Johor Bahru", detail: "Skudai, Johor" },
@@ -9,11 +10,11 @@ export const CAMPUSES = [
 export const YEARS = [1, 2, 3, 4, 5];
 
 const PROGRAMME_SUGGESTIONS = [
-  "Bachelor of Computer Science (Software Engineering)",
-  "Bachelor of Computer Science (Data Engineering)",
-  "Bachelor of Computer Science (Network and Security)",
-  "Bachelor of Computer Science (Bioinformatics)",
-  "Bachelor of Computer Science (Graphics and Multimedia Software)",
+  "Bachelor of Computer Science (Software Engineering) with Honours",
+  "Bachelor of Computer Science (Computer Networks and Security) with Honours",
+  "Bachelor of Computer Science (Graphics and Multimedia Software) with Honours",
+  "Bachelor of Computer Science (Data Engineering) with Honours",
+  "Bachelor of Computer Science (Bioinformatics) with Honours",
 ];
 
 // UTM-style matric number, e.g. A22EC0123
@@ -36,6 +37,11 @@ function initialsOf(name) {
   );
 }
 
+/** Missing values show as a prompt instead of "undefined". */
+function orNotSet(value) {
+  return value ? value : "Not set yet";
+}
+
 function validate(form) {
   const errors = {};
   if (form.fullName.trim().length < 3) errors.fullName = "Enter your full name.";
@@ -49,10 +55,14 @@ function validate(form) {
 }
 
 export default function Profile({ profile, onSave, onLogout }) {
+  const isIncomplete = !profile.programme || !profile.year || !profile.campus;
+  const matricLocked = Boolean(profile.matricNo); // only staff can change it once set
+
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(profile);
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function update(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -73,7 +83,7 @@ export default function Profile({ profile, onSave, onLogout }) {
     setEditing(false);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
     const cleaned = {
       ...form,
@@ -88,17 +98,25 @@ export default function Profile({ profile, onSave, onLogout }) {
       setNotice("Please fix the highlighted fields.");
       return;
     }
-    onSave?.(cleaned);
-    setEditing(false);
-    setNotice("Profile updated.");
+    setSaving(true);
+    setNotice("");
+    try {
+      await onSave?.(cleaned);
+      setEditing(false);
+      setNotice("Profile updated.");
+    } catch (err) {
+      setNotice(err.message || "Couldn't save your profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   const details = [
     { label: "Full name", value: profile.fullName },
-    { label: "Matric number", value: profile.matricNo },
-    { label: "Programme", value: profile.programme },
-    { label: "Year of study", value: `Year ${profile.year}` },
-    { label: "Campus", value: campusName(profile.campus) },
+    { label: "Matric number", value: orNotSet(profile.matricNo) },
+    { label: "Programme", value: orNotSet(profile.programme) },
+    { label: "Year of study", value: profile.year ? `Year ${profile.year}` : "Not set yet" },
+    { label: "Campus", value: profile.campus ? campusName(profile.campus) : "Not set yet" },
   ];
 
   return (
@@ -111,7 +129,7 @@ export default function Profile({ profile, onSave, onLogout }) {
             Your details are shown to library staff when you book a room or check in.
           </p>
         </div>
-        <span className="profile-preview">Sample data</span>
+        {USE_MOCK_AUTH && <span className="profile-preview">Sample data</span>}
       </div>
 
       {/* Summary card */}
@@ -121,11 +139,11 @@ export default function Profile({ profile, onSave, onLogout }) {
         </span>
         <div className="profile-hero-text">
           <h2>{profile.fullName}</h2>
-          <p>{profile.programme}</p>
+          <p>{profile.programme || "Add your programme in Edit Profile"}</p>
           <div className="profile-chips">
-            <span>{profile.matricNo}</span>
-            <span>Year {profile.year}</span>
-            <span>{campusName(profile.campus)}</span>
+            {profile.matricNo && <span>{profile.matricNo}</span>}
+            {profile.year && <span>Year {profile.year}</span>}
+            {profile.campus && <span>{campusName(profile.campus)}</span>}
           </div>
         </div>
         {!editing && (
@@ -138,6 +156,13 @@ export default function Profile({ profile, onSave, onLogout }) {
       <p className="profile-notice" role="status">
         {notice}
       </p>
+
+      {isIncomplete && !editing && (
+        <p className="profile-notice">
+          Your profile is missing some details. Click <strong>Edit Profile</strong> to add your programme, year and
+          campus.
+        </p>
+      )}
 
       {!editing ? (
         <section className="profile-card">
@@ -175,10 +200,17 @@ export default function Profile({ profile, onSave, onLogout }) {
                 onChange={(event) => update("matricNo", event.target.value.toUpperCase())}
                 placeholder="A22EC0123"
                 maxLength={9}
+                readOnly={matricLocked}
               />
-              {errors.matricNo ? <small>{errors.matricNo}</small> : <span className="hint">As shown on your matric card</span>}
+              {errors.matricNo ? (
+                <small>{errors.matricNo}</small>
+              ) : (
+                <span className="hint">
+                  {matricLocked ? "Ask library staff if this is wrong" : "As shown on your matric card"}
+                </span>
+              )}
             </label>
-
+            
             <label className={`span-2 ${errors.programme ? "has-error" : ""}`}>
               Programme
               <input
@@ -198,7 +230,8 @@ export default function Profile({ profile, onSave, onLogout }) {
 
             <label className={errors.year ? "has-error" : ""}>
               Year of study
-              <select value={form.year} onChange={(event) => update("year", Number(event.target.value))}>
+              <select value={form.year ?? ""} onChange={(event) => update("year", Number(event.target.value))}>
+                {!form.year && <option value="">Choose…</option>}
                 {YEARS.map((year) => (
                   <option key={year} value={year}>
                     Year {year}
@@ -232,10 +265,10 @@ export default function Profile({ profile, onSave, onLogout }) {
           </fieldset>
 
           <div className="profile-actions">
-            <button type="submit" className="profile-button primary">
-              Save Changes
+            <button type="submit" className="profile-button primary" disabled={saving}>
+              {saving ? "Saving…" : "Save Changes"}
             </button>
-            <button type="button" className="profile-button secondary" onClick={cancel}>
+            <button type="button" className="profile-button secondary" onClick={cancel} disabled={saving}>
               Cancel
             </button>
           </div>
@@ -256,7 +289,9 @@ export default function Profile({ profile, onSave, onLogout }) {
       )}
 
       <p className="profile-footnote">
-        Frontend preview: changes are saved in this browser only until Supabase is connected.
+        {USE_MOCK_AUTH
+          ? "Demo mode: changes last until you sign out."
+          : "Your details are saved in the PSZ database."}
       </p>
     </div>
   );

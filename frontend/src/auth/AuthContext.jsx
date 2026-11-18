@@ -60,8 +60,18 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, [token]);
 
+  // Save My Profile to the backend and show the new values everywhere.
+  const saveProfile = useCallback(
+    async (fields) => {
+      const data = await authApi.updateProfile(token, fields);
+      setUser(data.user);
+      return data.user;
+    },
+    [token]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, token, checking, login, logout }}>
+    <AuthContext.Provider value={{ user, token, checking, login, logout, saveProfile }}>
       {children}
     </AuthContext.Provider>
   );

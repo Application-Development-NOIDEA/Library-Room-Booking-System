@@ -106,32 +106,25 @@ function StudentApp({ user, onLogout }) {
   const [selectedRoom, setSelectedRoom] = useState(null);
   const [lastBooking, setLastBooking] = useState(null);
 
-  // Profile extras (programme, year, campus) are saved per user in this browser
-  // until the database has columns for them.
-  const profileKey = `psz-profile-${user.id}`;
-  const [profile, setProfile] = useState(() => {
-    const base = {
-      fullName: user.name,
-      matricNo: user.student_id ?? "",
-      programme: "Bachelor of Computer Science (Software Engineering)",
-      year: 1,
-      campus: "jb",
-    };
-    try {
-      const saved = window.localStorage.getItem(profileKey);
-      return saved ? { ...base, ...JSON.parse(saved) } : base;
-    } catch {
-      return base;
-    }
-  });
+  // Profile details come from the database (users table) through the login.
+  const { saveProfile } = useAuth();
+  const profile = {
+    fullName: user.name,
+    matricNo: user.student_id ?? "",
+    programme: user.programme ?? "",
+    year: user.year_of_study ?? null,
+    campus: user.campus ?? "",
+  };
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(profileKey, JSON.stringify(profile));
-    } catch {
-      /* storage unavailable: ignore */
-    }
-  }, [profile, profileKey]);
+  function handleSaveProfile(cleaned) {
+    return saveProfile({
+      name: cleaned.fullName,
+      student_id: cleaned.matricNo,
+      programme: cleaned.programme,
+      year_of_study: cleaned.year,
+      campus: cleaned.campus,
+    });
+  }
 
   function renderPage() {
     switch (activePage) {
@@ -176,7 +169,7 @@ function StudentApp({ user, onLogout }) {
         );
 
       case "profile":
-        return <Profile profile={profile} onSave={setProfile} onLogout={onLogout} />;
+        return <Profile profile={profile} onSave={handleSaveProfile} onLogout={onLogout} />;
 
       case "dashboard":
       default:
@@ -195,7 +188,7 @@ function StudentApp({ user, onLogout }) {
       onNavigate={setActivePage}
       onLogout={onLogout}
       userName={profile.fullName}
-      userDetail={`${profile.matricNo || "Student"} · ${campusName(profile.campus).replace("UTM ", "")}`}
+      userDetail={[profile.matricNo || "Student", profile.campus && campusName(profile.campus).replace("UTM ", "")].filter(Boolean).join(" · ")}
     >
       {renderPage()}
     </SharedLayout>

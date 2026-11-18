@@ -76,6 +76,7 @@ async function request(path, { method = "GET", body, token } = {}) {
 const realApi = {
   login: (email, password) => request("/auth/login", { method: "POST", body: { email, password } }),
   me: (token) => request("/auth/me", { token }),
+  updateProfile: (token, fields) => request("/profile", { method: "PUT", token, body: fields }),
   logout: (token) => request("/auth/logout", { method: "POST", token }),
   forgotPassword: (email) =>
     request("/auth/forgot-password", {
@@ -117,6 +118,12 @@ const mockApi = {
       throw error;
     }
     return { user };
+  },
+  async updateProfile(token, fields) {
+    await wait(300);
+    const user = demoUsers.find((item) => `demo-${item.id}` === token);
+    Object.assign(user, fields);
+    return { user: { ...user } };
   },
   async logout() {
     await wait(150);

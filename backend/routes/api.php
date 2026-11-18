@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\IssueReportController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StaffBookingController;
 
 Route::get('/user', function (Request $request) {
@@ -60,6 +61,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/bookings', [IssueReportController::class, 'bookings']);
         Route::get('/reports/mine', [IssueReportController::class, 'mine']);
         Route::post('/reports', [IssueReportController::class, 'store'])->middleware('throttle:10,1');
+
+        // My Profile
+        Route::put('/profile', [ProfileController::class, 'update']);
 });
 
 // Staff (library staff only)
