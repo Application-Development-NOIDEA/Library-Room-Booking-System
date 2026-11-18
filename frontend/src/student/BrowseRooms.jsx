@@ -153,6 +153,29 @@ export default function BrowseRooms({ onBook }) {
                 </div>
               </dl>
 
+<div className="room-facilities">
+  <h3>Facilities</h3>
+
+  {room.facilities?.length > 0 ? (
+    <>
+      <ul className="room-facilities-list">
+        {room.facilities.map((facility, index) => (
+          <li key={`${facility}-${index}`}>
+            {facility}
+          </li>
+        ))}
+      </ul>
+
+      <small>
+        Facilities may vary between individual rooms.
+      </small>
+    </>
+  ) : (
+    <p>Facilities not listed.</p>
+  )}
+</div>
+
+
               <button
                 type="button"
                 className="room-book-btn"
