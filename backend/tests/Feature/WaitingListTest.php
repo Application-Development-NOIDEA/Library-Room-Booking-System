@@ -10,6 +10,7 @@ use App\Services\WaitingListService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
+use Illuminate\Support\Facades\Log;
 
 uses(RefreshDatabase::class);
 
@@ -284,4 +285,48 @@ test('you can only see and change your own requests', function () {
         ->assertJsonCount(1, 'entries')
         ->assertJsonPath('entries.0.position', 1)
         ->assertJsonPath('rules.offer_minutes', 10);
+});
+
+test('a no-show is released exactly once and logged', function () {
+    Log::spy();
+    $noShow = wlBooking(wlStudent('No Show'), 'DISC-01', '2026-11-16 08:00', '2026-11-16 10:00');
+
+    // Exactly 15 minutes after the start: the grace period is over.
+    Carbon::setTestNow(wlAt('2026-11-16 08:15'));
+    $first = app(WaitingListService::class)->process();
+
+    expect($first['no_shows'])->toBe(1);
+    expect($noShow->fresh()->status)->toBe('no_show');
+
+    // The scheduler keeps running: nothing is released or notified a second time.
+    Carbon::setTestNow(wlAt('2026-11-16 08:16'));
+    $second = app(WaitingListService::class)->process();
+
+    expect($second['no_shows'])->toBe(0);
+    expect(UserNotification::where('message_type', 'booking_no_show')->count())->toBe(1);
+    Log::shouldHaveReceived('info')
+        ->withArgs(fn ($message, $context = []) => str_contains($message, 'no-show')
+            && ($context['booking_id'] ?? null) === $noShow->id)
+        ->once();
+});
+
+test('a booking is not released before the 15 minutes are up', function () {
+    $booking = wlBooking(wlStudent('Late But Fine'), 'DISC-01', '2026-11-16 08:00', '2026-11-16 10:00');
+
+    Carbon::setTestNow(wlAt('2026-11-16 08:14'));
+    $result = app(WaitingListService::class)->process();
+
+    expect($result['no_shows'])->toBe(0);
+    expect($booking->fresh()->status)->toBe('confirmed');
+});
+
+test('a booking staff already checked in is never released', function () {
+    $booking = wlBooking(wlStudent('Checked In'), 'DISC-01', '2026-11-16 08:00', '2026-11-16 10:00', 'checked_in');
+
+    Carbon::setTestNow(wlAt('2026-11-16 08:30'));
+    $result = app(WaitingListService::class)->process();
+
+    expect($result['no_shows'])->toBe(0);
+    expect($booking->fresh()->status)->toBe('checked_in');
+    expect(UserNotification::where('message_type', 'booking_no_show')->count())->toBe(0);
 });

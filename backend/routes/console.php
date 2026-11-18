@@ -28,4 +28,4 @@ Artisan::command('waiting-list:process', function (WaitingListService $service) 
     ));
 })->purpose('Apply the waiting list rules (no-shows, offer expiry, offering free rooms)');
 
-Schedule::command('waiting-list:process')->everyMinute();
+Schedule::command('waiting-list:process')->everyMinute()->withoutOverlapping();

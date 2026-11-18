@@ -10,6 +10,7 @@ use App\Models\WaitingList;
 use App\Models\WaitingListOffer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * The waiting-list rules, in one place.
@@ -57,30 +58,73 @@ class WaitingListService
      | Rule 1: no check-in within 15 minutes -> no-show, room released
      * ------------------------------------------------------------------ */
     public function markNoShows(?Carbon $now = null): int
-    {
-        $now = $this->clock($now);
-        $deadline = $now->copy()->subMinutes(self::CHECK_IN_GRACE_MINUTES);
+{
+    $now = $this->clock($now);
+    $deadline = $now->copy()->subMinutes(self::CHECK_IN_GRACE_MINUTES);
 
-        $bookings = Booking::with('room:id,room_name')
-            ->where('status', Booking::STATUS_CONFIRMED)
-            ->where('start_at', '<=', $deadline)
-            ->get();
+    // Only bookings still waiting for staff to check them in. A booking staff
+    // has checked in is 'checked_in', so it is never picked up here.
+    $ids = Booking::where('status', Booking::STATUS_CONFIRMED)
+        ->where('start_at', '<=', $deadline)
+        ->orderBy('id')
+        ->pluck('id');
 
-        foreach ($bookings as $booking) {
-            $booking->status = Booking::STATUS_NO_SHOW;
-            $booking->save();
-
-            $this->notify(
-                $booking->user_id,
-                'booking_no_show',
-                "Your booking for {$this->roomName($booking)} at {$this->time($booking->start_at)} was cancelled because "
-                    .'you did not check in within '.self::CHECK_IN_GRACE_MINUTES.' minutes.'
-            );
+    $released = 0;
+    foreach ($ids as $id) {
+        if ($this->releaseNoShow((int) $id, $deadline, $now)) {
+            $released++;
         }
-
-        return $bookings->count();
     }
 
+    return $released;
+}
+
+/**
+ * Release one no-show booking. Safe to call twice (or from two overlapping
+ * scheduler runs): the row is locked and re-checked, so only the first call
+ * changes it, logs it and notifies the student. Returns false if it did nothing.
+ */
+private function releaseNoShow(int $bookingId, Carbon $deadline, Carbon $now): bool
+{
+    $booking = DB::transaction(function () use ($bookingId, $deadline) {
+        $booking = Booking::with('room:id,room_name')->whereKey($bookingId)->lockForUpdate()->first();
+
+        // Staff checked them in, or someone cancelled it, since we looked.
+        if (! $booking
+            || $booking->status !== Booking::STATUS_CONFIRMED
+            || $booking->start_at->greaterThan($deadline)) {
+            return null;
+        }
+
+        $booking->status = Booking::STATUS_NO_SHOW;
+        $booking->save();
+
+        return $booking;
+    });
+
+    if (! $booking) {
+        return false;
+    }
+
+    Log::info('Booking auto-cancelled as no-show and room released', [
+        'booking_id' => $booking->id,
+        'reference' => $booking->reference,
+        'user_id' => $booking->user_id,
+        'room_id' => $booking->room_id,
+        'start_at' => $booking->start_at->toIso8601String(),
+        'grace_minutes' => self::CHECK_IN_GRACE_MINUTES,
+        'released_at' => $now->toIso8601String(),
+    ]);
+
+    $this->notify(
+        $booking->user_id,
+        'booking_no_show',
+        "Your booking for {$this->roomName($booking)} at {$this->time($booking->start_at)} was cancelled because "
+            .'you did not check in within '.self::CHECK_IN_GRACE_MINUTES.' minutes.'
+    );
+
+    return true;
+}
     /* ------------------------------------------------------------------
      | Rule 3: offer not accepted in 10 minutes -> expired, room released
      * ------------------------------------------------------------------ */
