@@ -146,3 +146,31 @@ DROP CONSTRAINT users_role_check;
 ALTER TABLE users
 ADD CONSTRAINT users_role_check
 CHECK (role IN ('student', 'staff'));
+
+-- Update room facilities
+UPDATE rooms SET facilities = '["Power socket","Desk lamp","Quiet zone"]'::jsonb
+  WHERE room_type = 'carrel' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Whiteboard","Power sockets","Air-conditioning","Wi-Fi"]'::jsonb
+  WHERE room_type = 'discussion' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Projector","Microphone & PA system","Air-conditioning","Wi-Fi"]'::jsonb
+  WHERE room_type = 'seminar' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Large display screen","Audio system","Air-conditioning"]'::jsonb
+  WHERE room_type = 'viewing' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Desktop computers","Internet access","Printer","Air-conditioning"]'::jsonb
+  WHERE room_type = 'lab' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Study desks","Power sockets","Air-conditioning","Wi-Fi"]'::jsonb
+  WHERE room_type = 'study_24h' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Open floor space","Power sockets","Display boards"]'::jsonb
+  WHERE room_type = 'lobby' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Comfortable seating","Wi-Fi","Event setup"]'::jsonb
+  WHERE room_type = 'lounge' AND facilities IS NULL;
+
+UPDATE rooms SET facilities = '["Display cabinets","Spotlighting","Open floor area"]'::jsonb
+  WHERE room_type = 'exhibition' AND facilities IS NULL;
