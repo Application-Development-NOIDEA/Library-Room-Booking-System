@@ -174,3 +174,37 @@ UPDATE rooms SET facilities = '["Comfortable seating","Wi-Fi","Event setup"]'::j
 
 UPDATE rooms SET facilities = '["Display cabinets","Spotlighting","Open floor area"]'::jsonb
   WHERE room_type = 'exhibition' AND facilities IS NULL;
+
+  CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE bookings
+ADD CONSTRAINT prevent_overlapping_bookings
+EXCLUDE USING gist (
+    room_id WITH =,
+    tstzrange(start_at, end_at, '[)') WITH &&
+)
+WHERE (status IN ('held', 'confirmed', 'checked_in'));
+
+ALTER TABLE rooms
+ADD CONSTRAINT valid_room_capacity
+CHECK (capacity > 0);
+
+ALTER TABLE booking_checkins
+ADD CONSTRAINT valid_checkout_time
+CHECK (
+    checked_out_at IS NULL
+    OR (
+        checked_in_at IS NOT NULL
+        AND checked_out_at > checked_in_at
+    )
+);
+
+-- Remove the existing foreign key constraints
+ALTER TABLE issue_reports
+DROP CONSTRAINT issue_reports_user_id_fkey,
+DROP CONSTRAINT issue_reports_room_id_fkey;
+
+-- Remove the duplicated columns
+ALTER TABLE issue_reports
+DROP COLUMN user_id,
+DROP COLUMN room_id;
