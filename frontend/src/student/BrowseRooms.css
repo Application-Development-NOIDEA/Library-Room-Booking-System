@@ -193,3 +193,39 @@
   border: 1px dashed #e5dac7;
   border-radius: 12px;
 }
+
+/* Room facilities */
+
+.room-facilities {
+  margin: 18px 0;
+}
+
+.room-facilities h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.room-facilities-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0 0 10px;
+  list-style: none;
+}
+
+.room-facilities-list li {
+  background: #f5edf0;
+  color: #76233c;
+  border: 1px solid #ead5dd;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.room-facilities small {
+  color: #777;
+  font-size: 11px;
+}
