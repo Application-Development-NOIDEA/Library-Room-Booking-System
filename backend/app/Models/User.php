@@ -15,11 +15,17 @@ class User extends Authenticatable
 
     public const UPDATED_AT = null;
 
+    /** Campus ids, same as CAMPUSES in frontend/src/student/Profile.jsx */
+    public const CAMPUSES = ['jb', 'kl'];
+
     protected $fillable = [
         'name',
         'email',
         'password',
         'student_id',
+        'programme',
+        'year_of_study',
+        'campus',
     ];
 
     protected $hidden = [
@@ -30,6 +36,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'year_of_study' => 'integer',
             'created_at' => 'datetime',
         ];
     }
@@ -44,6 +51,18 @@ class User extends Authenticatable
         return $this->role === 'staff';
     }
 
-
+    /** What the frontend gets after login, from /auth/me and after saving the profile. */
+    public function toProfileArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'email' => $this->email,
+            'student_id' => $this->student_id,
+            'role' => $this->role,
+            'programme' => $this->programme,
+            'year_of_study' => $this->year_of_study,
+            'campus' => $this->campus,
+        ];
+    }
 }
-

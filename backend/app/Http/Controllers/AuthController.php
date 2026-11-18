@@ -13,15 +13,9 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-    private function userPayload(User $user): array
+        private function userPayload(User $user): array
     {
-        return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'student_id' => $user->student_id,
-            'role' => $user->role,
-        ];
+        return $user->toProfileArray();
     }
 
     public function login(Request $request): JsonResponse
