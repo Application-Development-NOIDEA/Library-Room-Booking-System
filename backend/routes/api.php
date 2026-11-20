@@ -5,6 +5,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtensionController;
 use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\IssueReportController;
+use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StaffBookingController;
@@ -25,6 +26,7 @@ Route::prefix('auth')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::put('/password', [PasswordController::class, 'update'])->middleware('throttle:6,1');
     });
 });
 
