@@ -54,8 +54,7 @@ export default function ReportIssue() {
     setLoadError("");
     try {
       const [bookingList, reportList] = await Promise.all([api.listBookings(token), api.listReports(token)]);
-      // Only bookings that have already started can have a facility problem
-      setBookings(bookingList.filter((booking) => new Date(booking.start_at) <= new Date()));
+      // The server only returns bookings you have checked out of      setBookings(bookingList.filter((booking) => new Date(booking.start_at) <= new Date()));
       setReports(reportList);
     } catch (err) {
       setLoadError(err.message);
@@ -188,8 +187,7 @@ export default function ReportIssue() {
             (bookings.length === 0 ? (
               <section className="report-card report-empty">
                 <h2>No bookings to report on yet</h2>
-                <p>You can report a problem once you've used a room. Your past and current bookings will appear here.</p>
-              </section>
+<p>You can report a problem after staff have checked you out of a room. Those bookings will appear here.</p>              </section>
             ) : (
               <form className="report-card" onSubmit={handleSubmit} noValidate>
                 <h2>New report</h2>

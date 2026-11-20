@@ -59,22 +59,43 @@ test('guests cannot report issues', function () {
     rpSend([])->assertUnauthorized();
 });
 
-test('only your own bookings that have started can be reported', function () {
+test('only your own checked-out bookings can be reported', function () {
     $aina = rpStudent('Aina');
-    $past = rpBooking($aina, '2026-11-14 10:00', '2026-11-14 12:00');
-    $now = rpBooking($aina, '2026-11-16 14:00', '2026-11-16 16:00', 'confirmed');
-    rpBooking($aina, '2026-11-17 10:00', '2026-11-17 12:00', 'confirmed');   // future
-    rpBooking($aina, '2026-11-13 10:00', '2026-11-13 12:00', 'cancelled');   // cancelled
-    rpBooking($aina, '2026-09-01 10:00', '2026-09-01 12:00');                // too long ago
-    rpBooking(rpStudent('Ben'), '2026-11-15 10:00', '2026-11-15 12:00');      // not yours
+    $past = rpBooking($aina, '2026-11-14 10:00', '2026-11-14 12:00');                 // checked out
+    $today = rpBooking($aina, '2026-11-16 12:00', '2026-11-16 14:00');                // checked out, today
+    rpBooking($aina, '2026-11-16 14:30', '2026-11-16 16:00', 'confirmed');            // started, never checked out
+    rpBooking($aina, '2026-11-15 10:00', '2026-11-15 12:00', 'checked_in');           // still inside the room
+    rpBooking($aina, '2026-11-12 10:00', '2026-11-12 12:00', 'no_show');              // never turned up
+    rpBooking($aina, '2026-11-17 10:00', '2026-11-17 12:00', 'confirmed');            // future
+    rpBooking($aina, '2026-11-13 10:00', '2026-11-13 12:00', 'cancelled');            // cancelled
+    rpBooking($aina, '2026-09-01 10:00', '2026-09-01 12:00');                         // too long ago
+    rpBooking(rpStudent('Ben'), '2026-11-15 10:00', '2026-11-15 12:00');              // not yours
 
     Sanctum::actingAs($aina);
 
     test()->getJson('/api/reports/bookings')->assertOk()
         ->assertJsonCount(2, 'bookings')
-        ->assertJsonPath('bookings.0.id', $now->id)
+        ->assertJsonPath('bookings.0.id', $today->id)
         ->assertJsonPath('bookings.1.id', $past->id)
         ->assertJsonPath('bookings.1.room_name', 'Discussion Room 1');
+});
+
+test('a booking that was not checked out cannot be reported', function () {
+    $aina = rpStudent('Aina');
+    Sanctum::actingAs($aina);
+
+    foreach (['confirmed', 'checked_in', 'no_show', 'cancelled'] as $i => $status) {
+        $booking = rpBooking($aina, '2026-11-1'.(2 + $i).' 10:00', '2026-11-1'.(2 + $i).' 12:00', $status);
+
+        rpSend([
+            'booking_id' => $booking->id,
+            'issue_category' => 'lighting',
+            'description' => 'The ceiling light keeps flickering.',
+        ])->assertStatus(422)
+            ->assertJsonPath('message', 'You can only report a problem for a booking you have checked out of.');
+    }
+
+    expect(IssueReport::count())->toBe(0);
 });
 
 test('a student can report an issue with a photo', function () {
