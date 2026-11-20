@@ -27,12 +27,12 @@ class IssueReportController extends Controller
     /** How far back a booking can still be reported. */
     private const REPORT_WITHIN_DAYS = 30;
 
-    /** Bookings that really happened (not cancelled, not an unanswered offer). */
+        /**
+     * A problem can only be reported after staff have checked the student out.
+     * (Staff check-out sets this status; until that exists, nothing is reportable.)
+     */
     private const REPORTABLE_STATUSES = [
-        Booking::STATUS_CONFIRMED,
-        Booking::STATUS_CHECKED_IN,
         Booking::STATUS_CHECKED_OUT,
-        Booking::STATUS_NO_SHOW, // until staff check-in exists, past bookings end up here
     ];
 
     public const MAX_IMAGE_KB = 5120; // 5 MB, same as the page
@@ -98,11 +98,11 @@ class IssueReportController extends Controller
 
         $userId = $request->user()->id;
 
-        // Only your own bookings that have already started can be reported.
+        // Only your own bookings that staff have checked you out of can be reported.
         $booking = $this->reportableBookings($userId)->whereKey($data['booking_id'])->first();
         if (! $booking) {
             return response()->json([
-                'message' => 'Choose one of your bookings that has already started.',
+                'message' => 'You can only report a problem for a booking you have checked out of.',
             ], 422);
         }
 
