@@ -78,6 +78,7 @@ const realApi = {
   me: (token) => request("/auth/me", { token }),
   updateProfile: (token, fields) => request("/profile", { method: "PUT", token, body: fields }),
   logout: (token) => request("/auth/logout", { method: "POST", token }),
+  changePassword: (token, fields) => request("/auth/password", { method: "PUT", token, body: fields }),
   forgotPassword: (email) =>
     request("/auth/forgot-password", {
       method: "POST",
@@ -128,6 +129,17 @@ const mockApi = {
   async logout() {
     await wait(150);
     return null;
+  },
+  async changePassword(token, fields) {
+    await wait(400);
+    const user = demoUsers.find((item) => `demo-${item.id}` === token);
+    if (!user || demoPasswords.get(user.email) !== fields.current_password) {
+      const error = new Error("Your current password is incorrect.");
+      error.status = 422;
+      throw error;
+    }
+    demoPasswords.set(user.email, fields.password);
+    return { message: "Password changed." };
   },
   async forgotPassword(email) {
     await wait(500);

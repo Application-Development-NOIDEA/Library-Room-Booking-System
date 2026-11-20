@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./Profile.css";
+import ChangePassword from "./ChangePassword";
 import { USE_MOCK_AUTH } from "../auth/authService";
 
 export const CAMPUSES = [
@@ -274,6 +275,8 @@ export default function Profile({ profile, onSave, onLogout }) {
           </div>
         </form>
       )}
+
+      <ChangePassword />
 
       {/* Account: sign out */}
       {onLogout && (

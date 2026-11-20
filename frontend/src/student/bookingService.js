@@ -117,3 +117,8 @@ export async function getBookingQr(token, bookingId) {
 
   return data;
 }
+
+/** Ask for more time on a booking. Throws with the reason if it can't be extended. */
+export async function requestExtension(token, bookingId, hours) {
+  return request(`/bookings/${bookingId}/extend`, { method: "POST", token, body: { hours } });
+}

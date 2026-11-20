@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ResetPasswordMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
-        private function userPayload(User $user): array
+    /** How long a reset link works. */
+    public const RESET_MINUTES = 60;
+
+    private function userPayload(User $user): array
     {
         return $user->toProfileArray();
     }
@@ -51,10 +55,17 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out']);
     }
 
+    /**
+     * POST /api/auth/forgot-password  { email }
+     * Emails a reset link. Needs real MAIL_ settings in .env (MAIL_MAILER=log only writes to the log).
+     */
     public function forgotPassword(Request $request): JsonResponse
     {
-        $data = $request->validate(['email' => ['required', 'email']]);
-        $email = strtolower($data['email']);
+        $data = $request->validate(
+            ['email' => ['required', 'email']],
+            ['email.email' => 'Enter a valid email address.']
+        );
+        $email = strtolower(trim($data['email']));
 
         $user = User::where('email', $email)->first();
 
@@ -70,22 +81,33 @@ class AuthController extends Controller
             $frontend = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
             $link = "{$frontend}/reset-password?token={$plain}";
 
-            // MAIL_MAILER=log writes this to storage/logs/laravel.log during development.
-            Mail::raw(
-                "Reset your library booking password (valid for 60 minutes):\n{$link}",
-                fn ($m) => $m->to($email)->subject('Reset your password')
-            );
+            try {
+                Mail::to($email)->send(new ResetPasswordMail($user->name, $link, self::RESET_MINUTES));
+            } catch (\Throwable $e) {
+                report($e); // details go to storage/logs/laravel.log
+
+                return response()->json([
+                    'message' => "We couldn't send the email right now. Please try again in a few minutes.",
+                ], 503);
+            }
         }
 
         // Same answer whether or not the account exists (prevents email probing).
         return response()->json(['message' => 'If that email is registered, a reset link has been sent.']);
     }
 
+    /**
+     * POST /api/auth/reset-password  { token, password }
+     * Works once, within RESET_MINUTES. Signs the user out everywhere.
+     */
     public function resetPassword(Request $request): JsonResponse
     {
         $data = $request->validate([
             'token' => ['required', 'string'],
-            'password' => ['required', 'string', 'min:8'],
+            'password' => ['required', 'string', 'min:8', 'regex:/[A-Za-z]/', 'regex:/[0-9]/'],
+        ], [
+            'password.min' => 'Your new password needs at least 8 characters.',
+            'password.regex' => 'Your new password needs at least one letter and one number.',
         ]);
 
         $invalid = response()->json(
@@ -97,7 +119,7 @@ class AuthController extends Controller
             ->where('token', hash('sha256', $data['token']))
             ->first();
 
-        if (! $row || Carbon::parse($row->created_at)->addMinutes(60)->isPast()) {
+        if (! $row || Carbon::parse($row->created_at)->addMinutes(self::RESET_MINUTES)->isPast()) {
             return $invalid;
         }
 
@@ -112,6 +134,6 @@ class AuthController extends Controller
         DB::table('password_reset_tokens')->where('email', $row->email)->delete();
         $user->tokens()->delete(); // sign out all existing sessions
 
-        return response()->json(['message' => 'Password updated']);
+        return response()->json(['message' => 'Your password has been reset. Sign in with your new password.']);
     }
 }
