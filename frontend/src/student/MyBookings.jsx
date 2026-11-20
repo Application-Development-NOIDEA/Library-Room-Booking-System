@@ -3,7 +3,31 @@ import { useCallback, useEffect, useState } from "react";
 import "./MyBookings.css";
 import { useAuth } from "../auth/AuthContext";
 import { USE_MOCK_AUTH } from "../auth/authService";
-import {cancelBooking,formatBookingDate,formatTimeRange,listMyBookings,getBookingQr,} from "./bookingService";
+import {
+  cancelBooking,
+  formatBookingDate,
+  formatTime,
+  formatTimeRange,
+  getBookingQr,
+  listMyBookings,
+  requestExtension,
+} from "./bookingService";
+
+const EXTENSION_HOURS = [1, 2];
+const EXTENSION_WINDOW_MINUTES = 15; // same as BookingExtensionController::REQUEST_WINDOW_MINUTES
+
+/** True during the last 15 minutes of a booking, when an extension can be requested. */
+function inExtensionWindow(booking, now) {
+  if (USE_MOCK_AUTH) return true;
+  const end = Date.parse(booking.endAt);
+  return now >= end - EXTENSION_WINDOW_MINUTES * 60 * 1000 && now < end;
+}
+
+/** "14:00" plus 2 hours -> "4:00 PM" */
+function endAfter(endTime, hours) {
+  const [h, m] = endTime.split(":").map(Number);
+  return formatTime(`${String(h + hours).padStart(2, "0")}:${String(m).padStart(2, "0")}`);
+}
 
 const sampleBookings = [
   {
@@ -71,6 +95,9 @@ function toCard(booking) {
     status,
     tab: TAB_NAMES[booking.tab] ?? "Upcoming",
     canCancel: booking.can_cancel,
+    extendFrom: booking.extend_from, // null when it can't be extended at all
+    endTime: booking.end_time,
+    endAt: booking.end_at,
   };
 }
 
@@ -83,7 +110,17 @@ export default function MyBookings() {
   const [cancelling, setCancelling] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
-  const [qrState, setQrState] = useState({loading: false,token: "",error: "",});
+  const [qrState, setQrState] = useState({ loading: false, token: "", error: "" });
+  const [extendHours, setExtendHours] = useState(1);
+  const [extending, setExtending] = useState(false);
+  const [extendError, setExtendError] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  // Re-check every 30 seconds, so the button turns on when the last 15 minutes start
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
   const load = useCallback(async () => {
     if (USE_MOCK_AUTH) return;
     setLoading(true);
@@ -105,7 +142,50 @@ export default function MyBookings() {
     (booking) => booking.tab === activeTab
   );
 
-  async function cancelBookingCard(booking) { 
+  async function openQr(booking) {
+    setDialog({ type: "qr", booking });
+    if (USE_MOCK_AUTH) {
+      setQrState({ loading: false, token: `DEMO-${booking.id}`, error: "" });
+      return;
+    }
+    setQrState({ loading: true, token: "", error: "" });
+    try {
+      const data = await getBookingQr(token, booking.apiId);
+      setQrState({ loading: false, token: data.qr_token ?? data.token ?? data.qr ?? "", error: "" });
+    } catch (err) {
+      setQrState({ loading: false, token: "", error: err.message });
+    }
+  }
+
+  function openExtension(booking) {
+    setExtendHours(1);
+    setExtendError("");
+    setDialog({ type: "extension", booking });
+  }
+
+  async function submitExtension(booking) {
+    setExtendError("");
+    if (USE_MOCK_AUTH) {
+      setDialog(null);
+      setNotice(`Sample booking extended by ${extendHours} hour${extendHours === 1 ? "" : "s"}.`);
+      return;
+    }
+
+    setExtending(true);
+    try {
+      const data = await requestExtension(token, booking.apiId, extendHours);
+      const updated = toCard(data.booking);
+      setBookings((current) => current.map((item) => (item.apiId === updated.apiId ? updated : item)));
+      setNotice(data.message);
+      setDialog(null);
+    } catch (err) {
+      setExtendError(err.message); // e.g. someone has booked the next slot
+    } finally {
+      setExtending(false);
+    }
+  }
+
+  async function cancelBookingCard(booking) {
     if (USE_MOCK_AUTH) {
       setBookings((current) =>
         current.map((item) =>
@@ -249,15 +329,25 @@ export default function MyBookings() {
                     <span aria-hidden="true">↗</span>
                   </button>
 
-                  <button
-                    type="button"
-                    className="booking-button secondary"
-                    onClick={() =>
-                      setDialog({ type: "extension", booking })
-                    }
-                  >
-                    Request Extension
-                  </button>
+                  {booking.extendFrom &&
+                    (inExtensionWindow(booking, now) ? (
+                      <button
+                        type="button"
+                        className="booking-button secondary"
+                        onClick={() => openExtension(booking)}
+                      >
+                        Request Extension
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="booking-button secondary"
+                        disabled
+                        title="You can ask for more time in the last 15 minutes of your booking"
+                      >
+                        Extend from {formatTime(booking.extendFrom)}
+                      </button>
+                    ))}
 
                   {booking.canCancel && (
                   <button
@@ -361,11 +451,35 @@ export default function MyBookings() {
   </div>
 ) : (
 
-              <p>
-                Extensions depend on room availability and queue priority.
-                Availability checking and request submission will be
-                connected to the backend later.
-              </p>
+              <div className="extension-form">
+                <p>
+                  Currently {dialog.booking.time}. You get up to 2 more hours straight away if the room is free
+                  and nobody on the waiting list needs it.
+                </p>
+                <div className="extension-options" role="radiogroup" aria-label="How much longer?">
+                  {EXTENSION_HOURS.map((hours) => (
+                    <button
+                      key={hours}
+                      type="button"
+                      role="radio"
+                      aria-checked={extendHours === hours}
+                      className={`extension-option ${extendHours === hours ? "selected" : ""}`}
+                      onClick={() => {
+                        setExtendHours(hours);
+                        setExtendError("");
+                      }}
+                    >
+                      <strong>+{hours} hour{hours === 1 ? "" : "s"}</strong>
+                      <span>until {endAfter(dialog.booking.endTime, hours)}</span>
+                    </button>
+                  ))}
+                </div>
+                {extendError && (
+                  <p className="extension-error" role="alert">
+                    {extendError}
+                  </p>
+                )}
+              </div>
             )}
 
             <div className="modal-actions">
@@ -386,6 +500,17 @@ export default function MyBookings() {
                   onClick={() => cancelBookingCard(dialog.booking)}
                 >
                   {cancelling ? "Cancelling…" : "Confirm Cancellation"}
+                </button>
+              )}
+
+              {dialog.type === "extension" && (
+                <button
+                  type="button"
+                  className="booking-button primary"
+                  disabled={extending}
+                  onClick={() => submitExtension(dialog.booking)}
+                >
+                  {extending ? "Checking..." : "Request Extension"}
                 </button>
               )}
             </div>

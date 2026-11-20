@@ -1,16 +1,17 @@
 <?php
 
-use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\StudentDashboardController;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\WaitingListController;
+use App\Http\Controllers\BookingExtensionController;
+use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\IssueReportController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StaffBookingController;
+use App\Http\Controllers\StudentDashboardController;
+use App\Http\Controllers\WaitingListController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -32,30 +33,25 @@ Route::get('/rooms/{room}', [RoomController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/dashboard', [StudentDashboardController::class, 'index']);
-});
-
-// Booking (students must be signed in)
-Route::middleware('auth:sanctum')->group(function () {
     Route::get('/rooms/{type}/availability', [BookingController::class, 'availability'])
         ->where('type', '[a-z_0-9]+');
 
+    // Students only
     Route::middleware('role:student')->group(function () {
+        // Bookings
         Route::get('/bookings/mine', [BookingController::class, 'mine']);
         Route::post('/bookings', [BookingController::class, 'store'])->middleware('throttle:20,1');
         Route::post('/bookings/{booking}/cancel', [BookingController::class, 'cancel']);
+        Route::post('/bookings/{booking}/extend', [BookingExtensionController::class, 'store'])->middleware('throttle:10,1');
 
         // Generate a secure booking QR token
-        Route::post('/bookings/{booking}/qr', [BookingQrController::class, 'issue'])
-        ->middleware('throttle:10,1');
+        Route::post('/bookings/{booking}/qr', [BookingQrController::class, 'issue'])->middleware('throttle:10,1');
 
         // Waiting list
         Route::get('/waiting-list/mine', [WaitingListController::class, 'mine']);
         Route::post('/waiting-list', [WaitingListController::class, 'store'])->middleware('throttle:20,1');
-        Route::post('/bookings/{booking}/qr', [BookingQrController::class, 'issue'])
-    ->middleware('throttle:10,1');
         Route::post('/waiting-list/{waitingList}/accept', [WaitingListController::class, 'accept']);
         Route::post('/waiting-list/{waitingList}/leave', [WaitingListController::class, 'leave']);
-    });
 
         // Report an Issue
         Route::get('/reports/bookings', [IssueReportController::class, 'bookings']);
@@ -64,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // My Profile
         Route::put('/profile', [ProfileController::class, 'update']);
+    });
 });
 
 // Staff (library staff only)

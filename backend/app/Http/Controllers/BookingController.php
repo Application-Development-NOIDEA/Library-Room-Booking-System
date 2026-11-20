@@ -20,7 +20,7 @@ class BookingController extends Controller
      * change them to PSZ's real opening hours.
      */
     private const OPEN_HOUR = 8;
-    private const CLOSE_HOUR = 22;
+    public const CLOSE_HOUR = 22;
 
     private const MAX_DAYS_AHEAD = 14;
     private const MAX_UPCOMING_PER_STUDENT = 3;
@@ -281,12 +281,14 @@ class BookingController extends Controller
         return response()->json(['message' => $message], $status);
     }
 
-    private function payload(Booking $booking): array
+    public static function payload(Booking $booking): array
     {
         $start = $booking->start_at->copy()->setTimezone(self::TZ);
         $end = $booking->end_at->copy()->setTimezone(self::TZ);
         $now = Carbon::now(self::TZ);
         $type = $booking->room?->room_type;
+
+        $extendable = in_array($booking->status, ['confirmed', 'checked_in'], true) && $end->greaterThan($now) && $end->copy()->addHour()->lessThanOrEqualTo($end->copy()->setTime(self::CLOSE_HOUR, 0)); // can still get more time before closing
 
         $tab = match (true) {
             in_array($booking->status, ['cancelled', 'no_show'], true) => 'cancelled',
@@ -312,6 +314,8 @@ class BookingController extends Controller
             'status' => $booking->status,
             'tab' => $tab,
             'can_cancel' => in_array($booking->status, ['held', 'confirmed'], true) && $start->greaterThan($now),
+            'extend_from' => $extendable ? $end->copy()->subMinutes(BookingExtensionController::REQUEST_WINDOW_MINUTES)->format('H:i') : null,
+            'can_extend' => $extendable && $now->greaterThanOrEqualTo($end->copy()->subMinutes(BookingExtensionController::REQUEST_WINDOW_MINUTES)),
         ];
     }
 }
