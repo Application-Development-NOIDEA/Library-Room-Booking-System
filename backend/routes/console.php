@@ -4,6 +4,7 @@ use App\Services\WaitingListService;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
+use App\Services\BookingReminderService;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -29,3 +30,31 @@ Artisan::command('waiting-list:process', function (WaitingListService $service) 
 })->purpose('Apply the waiting list rules (no-shows, offer expiry, offering free rooms)');
 
 Schedule::command('waiting-list:process')->everyMinute()->withoutOverlapping();
+
+/*
+ | Sprint 3: Booking reminders
+ | T16: 30 minutes before booking starts
+ | T17: 15 minutes before checkout
+ */
+Artisan::command(
+    'booking-reminders:send {--dry-run}',
+    function (BookingReminderService $service) {
+        $dryRun = (bool) $this->option('dry-run');
+
+        $result = $service->send($dryRun);
+
+        $label = $dryRun ? 'Eligible' : 'Created';
+
+        $this->info(
+            "{$label} start reminders: {$result['start']}"
+        );
+
+        $this->info(
+            "{$label} checkout reminders: {$result['checkout']}"
+        );
+    }
+)->purpose('Send student booking and checkout reminders');
+
+Schedule::command('booking-reminders:send')
+    ->everyMinute()
+    ->withoutOverlapping();
