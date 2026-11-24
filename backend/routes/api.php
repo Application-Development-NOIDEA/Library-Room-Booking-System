@@ -66,10 +66,19 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
-// Staff (library staff only)
 Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(function () {
+
     Route::get('/bookings', [StaffBookingController::class, 'index']);
 
+    Route::post('/bookings/{booking}/check-in', [
+        StaffBookingController::class, 'checkIn'
+    ])->whereNumber('booking');
+
+    Route::post('/bookings/{booking}/check-out', [
+        StaffBookingController::class, 'checkOut'
+    ])->whereNumber('booking');
+
+   
 // AI review queue
     Route::get('/issue-reports/review', [StaffIssueReviewController::class, 'index']);
     Route::post('/issue-reports/{report}/review', [StaffIssueReviewController::class, 'review'])->whereNumber('report');
