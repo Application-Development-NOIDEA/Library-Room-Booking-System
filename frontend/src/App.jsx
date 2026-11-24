@@ -16,6 +16,7 @@ import {
   ResetPasswordPage,
   StaffSignedIn,
 } from "./auth/AuthPages";
+import BookingReminderPopup from "./student/BookingReminderPopup";
 
 /* The page students see first after login.
    To preview a page while building it, change this to that page's name
@@ -182,15 +183,29 @@ function StudentApp({ user, onLogout }) {
   // The booking form and confirmation belong to "Browse Rooms" in the sidebar
   const sidebarPage = ["book", "booking-confirmation"].includes(activePage) ? "rooms" : activePage;
 
-  return (
+  
+return (
+  <>
     <SharedLayout
       activePage={sidebarPage}
       onNavigate={setActivePage}
       onLogout={onLogout}
       userName={profile.fullName}
-      userDetail={[profile.matricNo || "Student", profile.campus && campusName(profile.campus).replace("UTM ", "")].filter(Boolean).join(" · ")}
+      userDetail={[
+        profile.matricNo || "Student",
+        profile.campus &&
+          campusName(profile.campus).replace("UTM ", ""),
+      ]
+        .filter(Boolean)
+        .join(" · ")}
     >
       {renderPage()}
     </SharedLayout>
-  );
+
+    <BookingReminderPopup
+      onViewBookings={() => setActivePage("bookings")}
+    />
+  </>
+);
+
 }

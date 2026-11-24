@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\Booking;
 use App\Models\UserNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class BookingReminderService
 {
@@ -40,7 +42,6 @@ class BookingReminderService
     ): int {
         $now = now();
 
-        // Allow a one-minute tolerance around the target time.
         $from = $now->copy()->addMinutes($minutes - 1);
         $to = $now->copy()->addMinutes($minutes + 1);
 
@@ -63,17 +64,15 @@ class BookingReminderService
                 $to,
                 $dryRun
             ) {
-                // Lock and recheck in case another scheduler runs.
                 $booking = Booking::with('room')
                     ->whereKey($id)
                     ->lockForUpdate()
                     ->first();
 
-                if (!$booking || !in_array(
-                    $booking->status,
-                    $statuses,
-                    true
-                )) {
+                if (
+                    !$booking ||
+                    !in_array($booking->status, $statuses, true)
+                ) {
                     return false;
                 }
 
@@ -86,10 +85,9 @@ class BookingReminderService
                     return false;
                 }
 
-                $reference = $booking->reference;
-                $prefix = "Booking {$reference}:";
+                $prefix = "Booking {$booking->reference}:";
 
-                // Prevent sending the same reminder twice.
+                // Prevent duplicate notifications.
                 $alreadySent = UserNotification::query()
                     ->where('user_id', $booking->user_id)
                     ->where('message_type', $type)
@@ -124,6 +122,7 @@ class BookingReminderService
                         . "return the room key to library staff.";
                 }
 
+                // In-app notification (existing feature).
                 UserNotification::create([
                     'user_id' => $booking->user_id,
                     'message_type' => $type,
@@ -136,14 +135,66 @@ class BookingReminderService
                     'status' => 'sent',
                 ]);
 
-                return true;
+                return $message;
             });
 
             if ($created) {
                 $count++;
+
+                // Dry run does not create or email anything.
+                if (!$dryRun && is_string($created)) {
+                    $this->sendEmail(
+                        (int) $id,
+                        $type,
+                        $created
+                    );
+                }
             }
         }
 
         return $count;
+    }
+
+    private function sendEmail(
+        int $bookingId,
+        string $type,
+        string $message
+    ): void {
+        $booking = Booking::with('user')->find($bookingId);
+        $email = $booking?->user?->email;
+
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            Log::warning('Booking reminder email not sent: invalid address', [
+                'booking_id' => $bookingId,
+                'type' => $type,
+            ]);
+            return;
+        }
+
+        $subject = $type === 'booking_start_reminder'
+            ? 'PSZ Library - Your Booking Starts in 30 Minutes'
+            : 'PSZ Library - Checkout Reminder (15 Minutes)';
+
+        try {
+            Mail::raw(
+                $message,
+                function ($mail) use ($email, $subject) {
+                    $mail->to($email)
+                        ->subject($subject);
+                }
+            );
+
+            Log::info('Booking reminder email accepted by mailer', [
+                'booking_id' => $bookingId,
+                'type' => $type,
+            ]);
+        } catch (\Throwable $e) {
+            // Website notification remains available.
+            Log::error('Booking reminder email failed', [
+                'booking_id' => $bookingId,
+                'type' => $type,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
