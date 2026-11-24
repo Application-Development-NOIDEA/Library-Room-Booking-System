@@ -11,6 +11,7 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StaffBookingController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\WaitingListController;
+use App\Http\Controllers\StaffIssueReviewController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -68,4 +69,8 @@ Route::middleware('auth:sanctum')->group(function () {
 // Staff (library staff only)
 Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(function () {
     Route::get('/bookings', [StaffBookingController::class, 'index']);
+
+// AI review queue
+    Route::get('/issue-reports/review', [StaffIssueReviewController::class, 'index']);
+    Route::post('/issue-reports/{report}/review', [StaffIssueReviewController::class, 'review'])->whereNumber('report');
 });

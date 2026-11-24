@@ -1,0 +1,20 @@
+[33m3f85126[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Merge pull request #14 from Application-Development-NOIDEA/feature/issue-report-after-checkout
+[33mb983041[m[33m ([m[1;31morigin/feature/issue-report-after-checkout[m[33m, [m[1;32mfeature/issue-report-after-checkout[m[33m)[m Only allow issue reports for check-out bookings
+[33m5d95645[m feat: implement booking start and checkout reminders
+[33m9baff2e[m database changed
+[33m89385d3[m frontend addition
+[33m62936b0[m KAN-29 Auto-cancel no-show 15 minutes after start and release slot
+[33m4236507[m Merge pull request #13 from Application-Development-NOIDEA/feature/profile-fields
+[33m81107e4[m Save student profile (programme, year, campus) in the database
+[33m9a982b7[m Merge branch 'main' of https://github.com/Application-Development-NOIDEA/Library-Room-Booking-System into feature/team-accounts
+[33m6e190a7[m Add TeamUserSeeder to create team accounts from a CSV
+[33mb9d984a[m Facilities for each room added
+[33m2e56bd3[m done kan 18
+[33mc9fee78[m Add booking QR integration and fix staff dashboard authentication
+[33m92c7e99[m Merge team updates and resolve staff dashboard conflicts
+[33mf2b20df[m nothing
+[33mbd3f597[m KAN-23 added
+[33mf1c5f22[m frontend and backend added for KAN-22
+[33m2d6b950[m Merge pull request #12 from Application-Development-NOIDEA/feature/report-issue-api
+[33mf59690a[m Add Report an Issue backend with photo upload
+[33mfe03735[m Merge pull request #11 from Application-Development-NOIDEA/feature/waiting-list
