@@ -53,9 +53,14 @@ export default function ReportIssue() {
     setLoading(true);
     setLoadError("");
     try {
-      const [bookingList, reportList] = await Promise.all([api.listBookings(token), api.listReports(token)]);
-      // The server only returns bookings you have checked out of      setBookings(bookingList.filter((booking) => new Date(booking.start_at) <= new Date()));
-      setReports(reportList);
+      const [bookingList, reportList] = await Promise.all([
+  api.listBookings(token),
+  api.listReports(token)
+]);
+
+// The server already filters eligible checked-out bookings.
+setBookings(bookingList);
+setReports(reportList);
     } catch (err) {
       setLoadError(err.message);
     } finally {

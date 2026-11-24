@@ -6,6 +6,7 @@ use App\Models\Booking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class StaffBookingController extends Controller
 {
@@ -78,5 +79,102 @@ class StaffBookingController extends Controller
             'bookings' => $rows,
             'counts'   => (object) $rows->countBy('status')->all(),
         ]);
-    }
+    
+}
+
+/**
+ * POST /api/staff/bookings/{booking}/check-in
+ */
+public function checkIn(Request $request, Booking $booking): JsonResponse
+{
+    return DB::transaction(function () use ($request, $booking) {
+
+        $booking = Booking::whereKey($booking->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($booking->status !== Booking::STATUS_CONFIRMED) {
+            return response()->json([
+                'message' => 'Only confirmed bookings can be checked in.'
+            ], 422);
+        }
+
+        if ($booking->end_at->lessThanOrEqualTo(now())) {
+            return response()->json([
+                'message' => 'This booking has already ended.'
+            ], 422);
+        }
+
+        $now = now();
+
+        DB::table('booking_checkins')->insert([
+            'booking_id' => $booking->id,
+            'checked_in_at' => $now,
+            'checked_in_by' => $request->user()->id,
+        ]);
+
+        $booking->status = Booking::STATUS_CHECKED_IN;
+        $booking->save();
+
+        return response()->json([
+            'message' => 'Student checked in successfully.',
+            'status' => $booking->status,
+        ]);
+    });
+}
+
+/**
+ * POST /api/staff/bookings/{booking}/check-out
+ */
+public function checkOut(Request $request, Booking $booking): JsonResponse
+{
+    return DB::transaction(function () use ($request, $booking) {
+
+        $booking = Booking::whereKey($booking->id)
+            ->lockForUpdate()
+            ->firstOrFail();
+
+        if ($booking->status !== Booking::STATUS_CHECKED_IN) {
+            return response()->json([
+                'message' => 'Only checked-in bookings can be checked out.'
+            ], 422);
+        }
+
+        $checkin = DB::table('booking_checkins')
+            ->where('booking_id', $booking->id)
+            ->whereNull('checked_out_at')
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->first();
+
+        if (!$checkin) {
+            return response()->json([
+                'message' => 'No active check-in record was found.'
+            ], 422);
+        }
+
+        $checkoutTime = now();
+
+        if ($checkoutTime->lessThanOrEqualTo(
+            Carbon::parse($checkin->checked_in_at)
+        )) {
+            $checkoutTime = Carbon::parse($checkin->checked_in_at)->addSecond();
+        }
+
+        DB::table('booking_checkins')
+            ->where('id', $checkin->id)
+            ->update([
+                'checked_out_at' => $checkoutTime,
+                'checked_out_by' => $request->user()->id,
+            ]);
+
+        $booking->status = Booking::STATUS_CHECKED_OUT;
+        $booking->save();
+
+        return response()->json([
+            'message' => 'Student checked out successfully.',
+            'status' => $booking->status,
+        ]);
+    });
+}
 }
