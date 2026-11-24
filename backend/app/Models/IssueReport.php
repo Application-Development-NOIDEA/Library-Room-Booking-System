@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * A problem a student reported in a room they booked.
@@ -52,5 +53,10 @@ class IssueReport extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function analysis(): HasOne
+    {
+        return $this->hasOne(IssueReportAnalysis::class);
     }
 }

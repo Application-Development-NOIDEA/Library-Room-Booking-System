@@ -1,10 +1,38 @@
 <?php
 
 use App\Services\WaitingListService;
+use App\Models\IssueReport;
+use App\Services\Ai\IssueReportAnalyzer;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 use App\Services\BookingReminderService;
+
+/*
+ | Safety net for the AI step: analyse reports that have no result yet
+ | (the AI step crashed, or reports from before this feature existed).
+ |
+ | Run once: php artisan issue-reports:analyze-pending
+ */
+Artisan::command('issue-reports:analyze-pending', function (IssueReportAnalyzer $analyzer) {
+    $reports = IssueReport::whereDoesntHave('analysis')
+        ->where('created_at', '<=', now()->subMinutes(2)) // leave brand-new ones to the normal flow
+        ->orderBy('id')
+        ->limit(50)
+        ->get();
+
+    foreach ($reports as $report) {
+        try {
+            $analyzer->analyze($report);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
+    $this->info("Analysed {$reports->count()} report(s).");
+})->purpose('Analyse issue reports that have no AI result yet');
+
+Schedule::command('issue-reports:analyze-pending')->everyFiveMinutes()->withoutOverlapping();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'ai' => [
+        // 'none' until a real provider client is written. Everything then goes to staff review.
+        'driver' => env('AI_DRIVER', 'none'),
+        // Below this confidence, a human must check the result.
+        'min_confidence' => (float) env('AI_MIN_CONFIDENCE', 0.7),
+    ],    
 ];

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\IssueReport;
+use App\Jobs\AnalyzeIssueReport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -119,6 +120,10 @@ class IssueReportController extends Controller
             'image_path' => $imagePath,
             'status' => IssueReport::STATUS_SUBMITTED,
         ]);
+
+                // After the response is sent, the AI classifies it. If it fails or isn't sure,
+        // the report goes to the staff review queue instead of being lost.
+        AnalyzeIssueReport::dispatchAfterResponse($report->id);
 
         return response()->json(['report' => $this->payload($report->fresh('room'))], 201);
     }
