@@ -80,8 +80,8 @@ export default function BookRoom({ room, onBooked, onBack }) {
     } catch (err) {
       setSubmitError(err.message);
       setSelected(null);
-      if (err.status === 409) load(); // someone else just took it: refresh the free counts
-    } finally {
+      // Someone else took it (409) or the time just started (422): refresh the slot list
+      if (err.status === 409 || err.status === 422) load();    } finally {
       setSubmitting(false);
     }
   }
@@ -100,7 +100,8 @@ export default function BookRoom({ room, onBooked, onBack }) {
     );
   }
 
-  const slots = availability?.slots ?? [];
+    // Slots that have already started are not shown at all
+  const slots = (availability?.slots ?? []).filter((slot) => !slot.past);
   const openSlots = slots.filter((slot) => slot.available).length;
 
   return (
@@ -192,6 +193,8 @@ export default function BookRoom({ room, onBooked, onBack }) {
                   Try again
                 </button>
               </div>
+                        ) : slots.length === 0 ? (
+              <p className="book-state">No time slots left on this date. Please choose another date.</p>
             ) : (
               <div className="book-slots">
                 {slots.map((slot) => {
