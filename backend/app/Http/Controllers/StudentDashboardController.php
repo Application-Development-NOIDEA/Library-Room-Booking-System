@@ -58,6 +58,7 @@ class StudentDashboardController extends Controller
             ->get()
             ->map(fn (Booking $booking) => [
                 'id' => $booking->reference,
+                'booking_id' => $booking->id,
                 'room' => $booking->room?->room_name,
                 'type' => strtoupper(str_replace('_', ' ', (string) $booking->room?->room_type)).' ROOM',
                 'start' => $booking->start_at->copy()->setTimezone(self::TZ)->toIso8601String(),
