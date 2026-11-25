@@ -1,0 +1,60 @@
+/* Browse Rooms: known problems on a room card (same gold note as the other student pages) */
+
+.room-notice {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-left: 3px solid #b49250;
+  border-radius: 0 10px 10px 0;
+  background: #faf5e9;
+  color: #4f4552;
+  font-size: 13px;
+}
+
+.room-notice.is-urgent {
+  border-left-color: #b3261e;
+  background: #fff8f7;
+}
+
+.room-notice-title {
+  margin: 0 0 6px;
+  color: #755922;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.room-notice.is-urgent .room-notice-title {
+  color: #8a1f17;
+}
+
+.room-notice ul {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.room-notice strong {
+  color: #302a32;
+  font-weight: 600;
+}
+
+.room-notice-count {
+  color: #746d78;
+}
+
+.room-notice-urgent {
+  color: #b3261e;
+  font-weight: 600;
+}
+
+.room-notice small {
+  display: block;
+  margin-top: 6px;
+  color: #746d78;
+  font-size: 12px;
+}
+
+.room-notice-hint {
+  line-height: 1.5;
+}
