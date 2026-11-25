@@ -551,3 +551,63 @@
     transition: none !important;
   }
 }
+/* ---------- AI category suggestion ---------- */
+
+.report-issue .report-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: -12px 0 24px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--rep-gold);
+  border-radius: 0 10px 10px 0;
+  background: var(--rep-gold-light);
+  color: #4f4552;
+  font-size: 13px;
+}
+
+.report-issue .report-suggestion p {
+  flex: 1;
+  margin: 0;
+}
+
+.report-issue .report-suggestion strong {
+  color: var(--rep-maroon);
+  font-weight: 600;
+}
+
+.report-issue .report-suggestion-mark {
+  color: var(--rep-gold-dark);
+}
+
+.report-issue .report-suggestion-urgent {
+  color: var(--rep-error);
+}
+
+.report-issue .report-suggestion button {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: 1px solid #e9d9df;
+  border-radius: 8px;
+  background: white;
+  color: var(--rep-maroon);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report-issue .report-suggestion button:hover {
+  background: var(--rep-maroon-light);
+}
+
+.report-issue .report-suggestion.is-match {
+  border-left-color: var(--rep-ok);
+  background: #f3f7f3;
+}
+
+.report-issue .report-suggestion.is-checking {
+  border-left-color: var(--rep-border);
+  background: transparent;
+  color: var(--rep-muted);
+}

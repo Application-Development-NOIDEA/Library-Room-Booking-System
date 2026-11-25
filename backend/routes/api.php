@@ -7,6 +7,7 @@ use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\IssueReportController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportSuggestionController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\StaffBookingController;
 use App\Http\Controllers\StudentDashboardController;
@@ -62,6 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/bookings', [IssueReportController::class, 'bookings']);
         Route::get('/reports/mine', [IssueReportController::class, 'mine']);
         Route::post('/reports', [IssueReportController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('/reports/suggest', ReportSuggestionController::class)->middleware('throttle:30,1');
 
         // My Profile
         Route::put('/profile', [ProfileController::class, 'update']);
