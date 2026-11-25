@@ -7,11 +7,14 @@ use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\IssueReportController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReportSuggestionController;
 use App\Http\Controllers\RoomController;
+use App\Http\Controllers\RoomNoticeController;
 use App\Http\Controllers\StaffBookingController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\StaffIssueReviewController;
+use App\Http\Controllers\StaffReportSummaryController;
 use App\Http\Controllers\StaffDeskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -37,6 +40,7 @@ Route::get('/rooms/{room}', [RoomController::class, 'show']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/dashboard', [StudentDashboardController::class, 'index']);
+    Route::get('/room-notices', RoomNoticeController::class);
     Route::get('/rooms/{type}/availability', [BookingController::class, 'availability'])
         ->where('type', '[a-z_0-9]+');
 
@@ -61,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reports/bookings', [IssueReportController::class, 'bookings']);
         Route::get('/reports/mine', [IssueReportController::class, 'mine']);
         Route::post('/reports', [IssueReportController::class, 'store'])->middleware('throttle:10,1');
+        Route::post('/reports/suggest', ReportSuggestionController::class)->middleware('throttle:30,1');
 
         // My Profile
         Route::put('/profile', [ProfileController::class, 'update']);
@@ -89,4 +94,8 @@ Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(functi
 // AI review queue
     Route::get('/issue-reports/review', [StaffIssueReviewController::class, 'index']);
     Route::post('/issue-reports/{report}/review', [StaffIssueReviewController::class, 'review'])->whereNumber('report');
+
+    // AI Report Analyzer (period summaries)
+    Route::get('/report-summaries', [StaffReportSummaryController::class, 'index']);
+    Route::post('/report-summaries', [StaffReportSummaryController::class, 'store'])->middleware('throttle:5,1');
 });

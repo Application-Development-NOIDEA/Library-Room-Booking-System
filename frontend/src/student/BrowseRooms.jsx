@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import "./BrowseRooms.css";
+import { useAuth } from "../auth/AuthContext";
+import RoomNotice from "./RoomNotice";
 
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api").replace(/\/$/, "");
 const TYPES = ["All", "Study", "Discussion", "Meeting", "Events"];
@@ -13,6 +15,23 @@ export default function BrowseRooms({ onBook }) {
   const [bookableOnly, setBookableOnly] = useState(false);
   const [notice, setNotice] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const { token } = useAuth();
+  const [notices, setNotices] = useState({});
+
+  // Known problems per room type. Only a hint, so errors are ignored.
+  useEffect(() => {
+    if (!token) return undefined;
+    let cancelled = false;
+    fetch(`${API_URL}/room-notices`, { headers: { Accept: "application/json", Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) setNotices(data.notices ?? {});
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, reloadKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,6 +152,7 @@ export default function BrowseRooms({ onBook }) {
 
               <h2>{room.name}</h2>
               <p className="room-desc">{room.description}</p>
+              <RoomNotice problems={notices[room.id]} />
 
               <dl className="room-facts">
                 <div>

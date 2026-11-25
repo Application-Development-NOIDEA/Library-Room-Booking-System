@@ -166,7 +166,10 @@ class BookingController extends Controller
                 ->map(fn ($id) => (int) $id)
                 ->all();
 
-            $room = $rooms->first(fn ($r) => ! in_array((int) $r->id, $busy, true));
+            // Prefer a free room without urgent or repeated problems (see RoomProblems).
+            $free = $rooms->reject(fn ($r) => in_array((int) $r->id, $busy, true));
+            $avoid = app(\App\Services\RoomProblems::class)->roomsToAvoid($free->pluck('id')->map(fn ($id) => (int) $id)->all());
+            $room = $free->first(fn ($r) => ! in_array((int) $r->id, $avoid, true)) ?? $free->first();
             if (! $room) {
                 return null;
             }

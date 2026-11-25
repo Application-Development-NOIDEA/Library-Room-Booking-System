@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReservationsPanel from './ReservationsPanel';
 import CameraQrScanner from './CameraQrScanner';
+import ReportAnalyzer from './ReportAnalyzer';
 import { staffApi } from './staffService';
 import { tokenStore } from '../auth/authService';
 import './StaffDashboard.css';
@@ -844,61 +845,7 @@ export default function StaffDashboard({ token, user }) {
                 )}
               </section>
 
-              <section className="staff-panel staff-panel-spaced">
-                <div className="staff-panel-heading">
-                  <h2>Report Analyzer</h2>
-                  <button className="staff-primary" type="button" onClick={generateSummary}>
-                    Generate Summary
-                  </button>
-                </div>
-
-                <p className="staff-muted">
-                  Counts the real issue reports, using the AI&apos;s or staff&apos;s category once a report has been
-                  accepted or reviewed.
-                </p>
-
-                {summary ? (
-                  <div className="staff-ai-results">
-                    <h3>
-                      {summary.count} reports analyzed
-                      {summary.pending > 0 && ` · ${summary.pending} still waiting for review`}
-                    </h3>
-
-                    <div className="staff-grid-two">
-                      <div className="staff-detail-card">
-                        <h3>By category</h3>
-                        {summary.categories.map(([name, n]) => (
-                          <p key={name}>{name}: <strong>{n}</strong></p>
-                        ))}
-                      </div>
-
-                      <div className="staff-detail-card">
-                        <h3>By severity</h3>
-                        {summary.severities.length ? (
-                          summary.severities.map(([name, n]) => (
-                            <p key={name}>{name[0].toUpperCase() + name.slice(1)}: <strong>{n}</strong></p>
-                          ))
-                        ) : (
-                          <p>No reviewed reports yet.</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="staff-detail-card">
-                      <h3>Recurring room issues</h3>
-                      {summary.recurring.length ? (
-                        summary.recurring.map(([name, n]) => (
-                          <p key={name}>{name}: <strong>{n}</strong></p>
-                        ))
-                      ) : (
-                        <p>None identified.</p>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="staff-empty">Click Generate Summary to analyze the issue reports.</div>
-                )}
-              </section>
+              <ReportAnalyzer token={token} />
             </>
           )}
 

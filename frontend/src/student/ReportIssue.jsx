@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import "./ReportIssue.css";
 import { useAuth } from "../auth/AuthContext";
 import { ISSUE_CATEGORIES, USE_MOCK_REPORTS, categoryLabel, reportApi } from "./reportService";
+import CategorySuggestion from "./CategorySuggestion";
 
 const MAX_DESCRIPTION = 500;
 const MIN_DESCRIPTION = 10;
@@ -272,6 +273,15 @@ setReports(reportList);
                     </small>
                   </div>
                 </div>
+
+                {/* AI suggestion for step 2 */}
+                <CategorySuggestion
+                  api={api}
+                  token={token}
+                  description={form.description}
+                  category={form.category}
+                  onUse={(id) => update("category", id)}
+                />
 
                 {/* 4. Photo */}
                 <div className={`report-field ${errors.image ? "has-error" : ""}`}>

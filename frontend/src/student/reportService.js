@@ -85,7 +85,11 @@ const realApi = {
     if (image) form.append("image", image);
     return (await request("/reports", { method: "POST", token, body: form })).report;
   },
-};
+  async suggestCategory(token, description) {
+    const form = new FormData();
+    form.append("description", description);
+    return (await request("/reports/suggest", { method: "POST", token, body: form })).suggestion ?? null;
+  },};
 
 /* ---------- Sample data (saved in this browser) ---------- */
 
@@ -167,7 +171,21 @@ function makeMockApi(userId) {
       saveReports(userId, [report, ...reports]);
       return report;
     },
-  };
+    async suggestCategory(_token, description) {
+      await wait(300);
+      const text = description.toLowerCase();
+      const words = {
+        lighting: ["light", "lamp", "flicker", "dark"],
+        air_conditioning: ["aircond", "aircon", "too hot", "too cold"],
+        furniture: ["chair", "table", "desk"],
+        power: ["socket", "plug", "charger"],
+        display: ["screen", "projector", "tv", "hdmi", "whiteboard"],
+        wifi: ["wifi", "wi-fi", "internet", "network"],
+        cleanliness: ["dirty", "rubbish", "smell", "trash"],
+      };
+      const found = Object.keys(words).find((id) => words[id].some((word) => text.includes(word)));
+      return found ? { category: found, severity: "medium", confidence: 0.6, source: "rules" } : null;
+    },  };
 }
 
 export function reportApi(userId) {
