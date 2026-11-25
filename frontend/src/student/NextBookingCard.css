@@ -1,0 +1,278 @@
+/* Student Dashboard: live next-booking card (maroon card, gold details) */
+
+.next-card {
+  --next-gold: #e8cf98;
+  margin-top: 28px;
+  padding: 26px 28px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #75243a 0%, #5c1a2c 100%);
+  color: white;
+}
+
+.next-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.next-card-type {
+  color: var(--next-gold);
+  font-size: 10px;
+  letter-spacing: 1.4px;
+}
+
+.next-card-ref {
+  color: rgb(255 255 255 / 55%);
+  font-size: 11px;
+}
+
+.next-card-main {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.next-card h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 400;
+}
+
+.next-card-when {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0;
+  color: rgb(255 255 255 / 85%);
+  font-size: 14px;
+}
+
+.next-card-badge {
+  padding: 3px 9px;
+  border-radius: 20px;
+  background: rgb(232 207 152 / 20%);
+  color: var(--next-gold);
+  font-size: 11px;
+}
+
+.next-card-timer {
+  text-align: right;
+}
+
+.next-card-timer span {
+  display: block;
+  color: rgb(255 255 255 / 65%);
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.next-card-timer strong {
+  display: block;
+  margin-top: 2px;
+  color: var(--next-gold);
+  font-size: 36px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.next-card-progress {
+  height: 4px;
+  margin-top: 20px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 15%);
+  overflow: hidden;
+}
+
+.next-card-progress div {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--next-gold);
+  transition: width 1s linear;
+}
+
+.next-card-hint {
+  margin: 14px 0 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--next-gold);
+  color: rgb(255 255 255 / 85%);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.next-card.is-urgent .next-card-timer strong,
+.next-card.is-urgent .next-card-hint {
+  border-left-color: #ffb4a9;
+}
+
+.next-card.is-urgent .next-card-timer strong {
+  color: #ffd2cb;
+}
+
+.next-card.is-urgent .next-card-progress div {
+  background: #ffb4a9;
+}
+
+.next-card-message {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.next-card-message.ok {
+  background: rgb(232 207 152 / 18%);
+  color: var(--next-gold);
+}
+
+.next-card-message.error {
+  background: rgb(255 180 169 / 18%);
+  color: #ffd2cb;
+}
+
+/* Buttons */
+
+.next-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.next-btn {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 9px;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 180ms ease, color 180ms ease;
+}
+
+.next-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 10%);
+}
+
+.next-btn.primary {
+  border-color: transparent;
+  background: var(--next-gold);
+  color: #3b2a0c;
+}
+
+.next-btn.primary:hover:not(:disabled) {
+  background: #f0dcae;
+}
+
+.next-btn.ghost {
+  border-color: transparent;
+  color: rgb(255 255 255 / 75%);
+}
+
+.next-btn.danger {
+  border-color: transparent;
+  background: #ffd2cb;
+  color: #6e1a12;
+}
+
+.next-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.next-btn:focus-visible,
+.next-choice:focus-visible {
+  outline: 2px solid var(--next-gold);
+  outline-offset: 2px;
+}
+
+/* Panels: QR, extend, cancel */
+
+.next-card-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 8%);
+}
+
+.next-card-panel > p {
+  margin: 0 0 12px;
+  color: rgb(255 255 255 / 88%);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.next-card-panel .next-card-actions {
+  margin-top: 14px;
+}
+
+.next-card-panel.qr {
+  text-align: center;
+}
+
+.next-card-qr {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: white;
+}
+
+.next-card-choices {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.next-choice {
+  display: grid;
+  gap: 2px;
+  min-width: 130px;
+  padding: 10px 14px;
+  border: 1px solid rgb(255 255 255 / 30%);
+  border-radius: 10px;
+  background: transparent;
+  color: white;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.next-choice small {
+  color: rgb(255 255 255 / 65%);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.next-choice.is-selected {
+  border-color: var(--next-gold);
+  background: rgb(232 207 152 / 16%);
+}
+
+@media (max-width: 600px) {
+  .next-card {
+    padding: 22px;
+  }
+
+  .next-card-timer {
+    text-align: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .next-card-progress div {
+    transition: none;
+  }
+}

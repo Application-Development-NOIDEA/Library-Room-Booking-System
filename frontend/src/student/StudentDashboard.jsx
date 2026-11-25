@@ -3,6 +3,7 @@ import "./StudentDashboard.css";
 import { useAuth } from "../auth/AuthContext";
 import { USE_MOCK_AUTH } from "../auth/authService";
 import { SAMPLE_DASHBOARD, fetchDashboard } from "./dashboardService";
+import NextBookingCard from "./NextBookingCard";
 
 /* ---------- Helpers ---------- */
 
@@ -135,32 +136,7 @@ export default function StudentDashboard({ onNavigate, userName = "Student" }) {
 
       {/* Next booking */}
       {next ? (
-        <section className="dash-next" aria-label="Your next booking">
-          <div className="dash-next-top">
-            <span className="dash-category">YOUR NEXT BOOKING · {next.type}</span>
-            <span className="dash-pill">{startsIn(next.start, now)}</span>
-          </div>
-
-          <h2>{next.room}</h2>
-          <p className="dash-next-meta">
-            {formatDate(next.start)} · {formatTime(next.start)} – {formatTime(next.end)}
-            <span> · Ref {next.id}</span>
-          </p>
-
-          <div className="dash-next-note">
-            Check in at the library counter within 15 minutes of {formatTime(next.start)} or the room is
-            released to the waiting list.
-          </div>
-
-          <div className="dash-actions">
-            <button type="button" className="dash-button primary" onClick={() => go("bookings")}>
-              View QR Code
-            </button>
-            <button type="button" className="dash-button secondary" onClick={() => go("bookings")}>
-              Manage Bookings
-            </button>
-          </div>
-        </section>
+        <NextBookingCard booking={next} token={token} onChanged={load} onNavigate={go} />
       ) : (
         <section className="dash-next empty">
           <h2>No upcoming bookings</h2>

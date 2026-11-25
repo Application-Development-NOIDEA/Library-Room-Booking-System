@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./SharedLayout.css";
+import NotificationBell from "./NotificationBell";
 
 const navigation = [
   { id: "dashboard", label: "Dashboard", icon: "◫" },
@@ -136,6 +137,7 @@ export default function SharedLayout({
             </div>
           </div>
 
+          <NotificationBell onNavigate={navigate} />
           <button
             type="button"
             className="account-profile account-button"

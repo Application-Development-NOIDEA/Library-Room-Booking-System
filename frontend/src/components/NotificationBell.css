@@ -1,0 +1,214 @@
+/* Notification bell in the student header (same maroon / gold as the student pages) */
+
+.notification-bell {
+  position: relative;
+  margin-left: auto; /* sits just before the profile button */
+  margin-right: 14px;
+}
+
+.bell-button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid #e9e6e9;
+  border-radius: 50%;
+  background: white;
+  color: #75243a;
+  cursor: pointer;
+  transition: background-color 180ms ease;
+}
+
+.bell-button:hover {
+  background: #f8f0f3;
+}
+
+.bell-button svg {
+  width: 20px;
+  height: 20px;
+}
+
+.bell-button.is-urgent svg {
+  animation: bell-ring 2.4s ease-in-out infinite;
+  transform-origin: 50% 15%;
+}
+
+.bell-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border: 2px solid white;
+  border-radius: 10px;
+  background: #75243a;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+.bell-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  width: min(380px, calc(100vw - 32px));
+  max-height: 70vh;
+  overflow-y: auto;
+  border: 1px solid #e9e6e9;
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 12px 32px rgb(48 42 50 / 14%);
+  color: #302a32;
+}
+
+.bell-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e9e6e9;
+  background: white;
+  font-size: 14px;
+}
+
+.bell-link {
+  border: 0;
+  background: none;
+  color: #75243a;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.bell-empty {
+  margin: 0;
+  padding: 28px 16px;
+  color: #746d78;
+  font-size: 13px;
+  text-align: center;
+}
+
+.bell-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bell-item {
+  border-bottom: 1px solid #f1eef1;
+}
+
+.bell-item.is-unread {
+  background: #fdfafb;
+}
+
+.bell-item-body {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bell-item-body strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.bell-text {
+  display: block;
+  margin-top: 2px;
+  color: #4f4552;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.bell-item-body small {
+  display: block;
+  margin-top: 4px;
+  color: #746d78;
+  font-size: 11px;
+}
+
+.bell-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.bell-item.is-unread .bell-dot {
+  background: #b49250;
+}
+
+.bell-item.is-unread.is-urgent .bell-dot {
+  background: #b3261e;
+}
+
+.bell-action {
+  margin: 0 16px 12px 34px;
+  padding: 6px 10px;
+  border: 1px solid #e9d9df;
+  border-radius: 8px;
+  background: white;
+  color: #75243a;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bell-item.is-urgent.is-unread .bell-action {
+  border-color: #75243a;
+  background: #75243a;
+  color: white;
+}
+
+.bell-button:focus-visible,
+.bell-action:focus-visible,
+.bell-item-body:focus-visible,
+.bell-link:focus-visible {
+  outline: 2px solid #b49250;
+  outline-offset: 2px;
+}
+
+@keyframes bell-ring {
+  0%, 80%, 100% { transform: rotate(0); }
+  84% { transform: rotate(14deg); }
+  88% { transform: rotate(-12deg); }
+  92% { transform: rotate(8deg); }
+  96% { transform: rotate(-4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bell-button.is-urgent svg {
+    animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .notification-bell {
+    margin-right: 8px;
+  }
+
+  .bell-panel {
+    position: fixed;
+    top: 70px;
+    right: 16px;
+  }
+}

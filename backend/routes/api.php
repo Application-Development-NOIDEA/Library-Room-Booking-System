@@ -6,6 +6,7 @@ use App\Http\Controllers\BookingExtensionController;
 use App\Http\Controllers\BookingQrController;
 use App\Http\Controllers\IssueReportController;
 use App\Http\Controllers\PasswordController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportSuggestionController;
 use App\Http\Controllers\RoomController;
@@ -69,6 +70,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // My Profile
         Route::put('/profile', [ProfileController::class, 'update']);
+
+        // Notification bell
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'read'])->whereNumber('notification');
     });
 });
 
