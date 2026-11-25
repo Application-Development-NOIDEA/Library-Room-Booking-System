@@ -41,4 +41,9 @@ return [
         // Below this confidence, a human must check the result.
         'min_confidence' => (float) env('AI_MIN_CONFIDENCE', 0.7),
     ],    
+
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+        'model' => env('GEMINI_MODEL', 'gemini-3.1-flash-lite'),
+    ],
 ];
