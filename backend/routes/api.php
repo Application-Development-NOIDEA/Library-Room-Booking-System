@@ -12,6 +12,7 @@ use App\Http\Controllers\StaffBookingController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\StaffIssueReviewController;
+use App\Http\Controllers\StaffReportSummaryController;
 use App\Http\Controllers\StaffDeskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -89,4 +90,8 @@ Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(functi
 // AI review queue
     Route::get('/issue-reports/review', [StaffIssueReviewController::class, 'index']);
     Route::post('/issue-reports/{report}/review', [StaffIssueReviewController::class, 'review'])->whereNumber('report');
+
+    // AI Report Analyzer (period summaries)
+    Route::get('/report-summaries', [StaffReportSummaryController::class, 'index']);
+    Route::post('/report-summaries', [StaffReportSummaryController::class, 'store'])->middleware('throttle:5,1');
 });
