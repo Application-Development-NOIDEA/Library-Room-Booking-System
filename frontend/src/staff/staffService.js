@@ -47,6 +47,9 @@ export const staffApi = {
   reviewReport: (token, id, body) =>
   staffRequest(token, `/issue-reports/${id}/review`, { method: 'POST', body }),
   dashboard: (token) => staffRequest(token, '/dashboard'),
+  reportSummaries: (token) => staffRequest(token, '/report-summaries'),
+  generateReportSummary: (token, from, to) =>
+    staffRequest(token, '/report-summaries', { method: 'POST', body: { from, to } }),
 
   lookup: (token, query) => staffRequest(token, '/bookings/lookup', { method: 'POST', body: { query } }),
   checkIn: (token, id) => staffRequest(token, `/bookings/${id}/check-in`, { method: 'POST' }),

@@ -1,0 +1,337 @@
+/* AI Report Analyzer: same quiet look as the student pages (MyBookings.css). */
+
+.report-analyzer {
+  --ra-maroon: #75243a;
+  --ra-gold: #b49250;
+  --ra-gold-dark: #755922;
+  --ra-gold-light: #faf5e9;
+  --ra-muted: #746d78;
+  --ra-border: #e9e6e9;
+
+  color: #302a32;
+}
+
+/* Period filters (like the My Bookings tabs) */
+
+.report-analyzer .ra-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ra-border);
+}
+
+.report-analyzer .ra-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.report-analyzer .ra-chip {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ra-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.report-analyzer .ra-chip:hover {
+  color: var(--ra-maroon);
+}
+
+.report-analyzer .ra-chip.is-active {
+  border-color: #e9d9df;
+  background: white;
+  color: var(--ra-maroon);
+  font-weight: 600;
+}
+
+.report-analyzer .ra-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+  order: 3;
+}
+
+.report-analyzer .ra-dates label {
+  display: grid;
+  gap: 6px;
+  color: var(--ra-muted);
+  font-size: 12px;
+}
+
+.report-analyzer .ra-error {
+  margin: 14px 0 0;
+  color: #b3261e;
+  font-size: 13px;
+}
+
+/* Result */
+
+.report-analyzer .ra-result {
+  margin-top: 22px;
+}
+
+.report-analyzer .ra-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-analyzer .ra-result-head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.report-analyzer .ra-badge {
+  padding: 5px 11px;
+  border: 1px solid var(--ra-border);
+  border-radius: 20px;
+  color: var(--ra-muted);
+  font-size: 11px;
+}
+
+.report-analyzer .ra-badge.is-ai {
+  border-color: #e5dac7;
+  background: var(--ra-gold-light);
+  color: var(--ra-gold-dark);
+}
+
+/* The summary itself: gold side line, like the student guidance note */
+.report-analyzer .ra-summary {
+  margin: 16px 0 0;
+  padding: 14px 18px;
+  border-left: 3px solid var(--ra-gold);
+  border-radius: 0 10px 10px 0;
+  background: var(--ra-gold-light);
+  color: #4f4552;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Numbers in one quiet row */
+.report-analyzer .ra-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 22px 0;
+  border-top: 1px solid var(--ra-border);
+  border-bottom: 1px solid var(--ra-border);
+}
+
+.report-analyzer .ra-stats div {
+  padding: 14px 16px;
+}
+
+.report-analyzer .ra-stats div + div {
+  border-left: 1px solid var(--ra-border);
+}
+
+.report-analyzer .ra-stats strong {
+  display: block;
+  color: var(--ra-maroon);
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.report-analyzer .ra-stats span {
+  color: var(--ra-muted);
+  font-size: 12px;
+}
+
+/* Two columns: actions | breakdown */
+.report-analyzer .ra-grid {
+  gap: 32px;
+}
+
+.report-analyzer .ra-grid > .staff-detail-card {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.report-analyzer .ra-grid h3 {
+  margin: 0 0 10px;
+  color: var(--ra-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-analyzer .ra-grid h3:not(:first-child) {
+  margin-top: 24px;
+}
+
+.report-analyzer .ra-actions {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.report-analyzer .ra-recurring {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.report-analyzer .ra-recurring li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--ra-border);
+}
+
+.report-analyzer .ra-recurring strong {
+  color: var(--ra-maroon);
+  font-weight: 600;
+}
+
+.report-analyzer .ra-bar {
+  display: grid;
+  grid-template-columns: 110px 1fr 24px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.report-analyzer .ra-bar-track {
+  height: 4px;
+  border-radius: 4px;
+  background: #f0eef1;
+  overflow: hidden;
+}
+
+.report-analyzer .ra-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--ra-maroon);
+}
+
+.report-analyzer .ra-bar strong {
+  text-align: right;
+  font-weight: 600;
+}
+
+.report-analyzer .ra-severity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  font-size: 13px;
+}
+
+.report-analyzer .ra-sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ra-muted);
+}
+
+.report-analyzer .ra-sev::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cfcad1;
+}
+
+.report-analyzer .ra-sev strong {
+  color: #302a32;
+}
+
+.report-analyzer .ra-sev-high::before { background: #b3261e; }
+.report-analyzer .ra-sev-medium::before { background: var(--ra-gold); }
+.report-analyzer .ra-sev-low::before { background: #7a9a7e; }
+
+.report-analyzer .ra-generated {
+  margin: 22px 0 0;
+  font-size: 12px;
+}
+
+/* Earlier summaries */
+
+.report-analyzer .ra-history {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--ra-border);
+}
+
+.report-analyzer .ra-history h3 {
+  margin: 0 0 8px;
+  color: var(--ra-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.report-analyzer .ra-history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #302a32;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.report-analyzer .ra-history-item:hover {
+  background: #faf8fa;
+}
+
+.report-analyzer .ra-history-item.is-active {
+  background: #f8f0f3;
+  color: var(--ra-maroon);
+}
+
+.report-analyzer .ra-history-item small {
+  color: var(--ra-muted);
+}
+
+.report-analyzer .ra-chip:focus-visible,
+.report-analyzer .ra-history-item:focus-visible {
+  outline: 2px solid var(--ra-gold);
+  outline-offset: 2px;
+}
+
+@media (max-width: 640px) {
+  .report-analyzer .ra-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-analyzer .ra-stats div:nth-child(3) {
+    border-left: 0;
+  }
+
+  .report-analyzer .ra-stats div:nth-child(n + 3) {
+    border-top: 1px solid var(--ra-border);
+  }
+
+  .report-analyzer .ra-bar {
+    grid-template-columns: 90px 1fr 22px;
+  }
+}
