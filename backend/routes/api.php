@@ -12,6 +12,7 @@ use App\Http\Controllers\StaffBookingController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\StaffIssueReviewController;
+use App\Http\Controllers\StaffDeskController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -66,17 +67,23 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 });
 
+// Staff (library staff only)
 Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(function () {
-
     Route::get('/bookings', [StaffBookingController::class, 'index']);
 
-    Route::post('/bookings/{booking}/check-in', [
-        StaffBookingController::class, 'checkIn'
-    ])->whereNumber('booking');
+    // Front desk
+    Route::get('/dashboard', [StaffDeskController::class, 'dashboard']);
+    Route::post('/bookings/lookup', [StaffDeskController::class, 'lookup'])->middleware('throttle:60,1');
+    Route::post('/bookings/{booking}/check-in', [StaffDeskController::class, 'checkIn'])->whereNumber('booking');
+    Route::post('/bookings/{booking}/check-out', [StaffDeskController::class, 'checkOut'])->whereNumber('booking');
+    Route::post('/bookings/{booking}/no-show', [StaffDeskController::class, 'noShow'])->whereNumber('booking');
+    Route::post('/walk-ins', [StaffDeskController::class, 'walkIn'])->middleware('throttle:30,1');
 
-    Route::post('/bookings/{booking}/check-out', [
-        StaffBookingController::class, 'checkOut'
-    ])->whereNumber('booking');
+    // Rooms, waiting list, extensions, issue reports
+    Route::patch('/rooms/{room}/status', [StaffDeskController::class, 'setRoomStatus'])->whereNumber('room');
+    Route::post('/waitlist/process', [StaffDeskController::class, 'processWaitlist']);
+    Route::patch('/extensions/{extension}/decision', [StaffDeskController::class, 'decideExtension'])->whereNumber('extension');
+    Route::patch('/reports/{report}/status', [StaffDeskController::class, 'setReportStatus'])->whereNumber('report');
 
    
 // AI review queue

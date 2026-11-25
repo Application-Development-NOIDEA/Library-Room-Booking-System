@@ -16,7 +16,7 @@ function StaffGate() {
     }
     authApi
       .me(token)
-      .then(({ user }) => setState(user.role === 'staff' ? { status: 'ok', token } : { status: 'denied' }))
+          .then(({ user }) => setState(user.role === 'staff' ? { status: 'ok', token, user } : { status: 'denied' }))
       .catch(() => {
         tokenStore.clear();
         setState({ status: 'signin' });
@@ -42,7 +42,7 @@ function StaffGate() {
       </div>
     );
   }
-  return <StaffDashboard token={state.token} />;
+    return <StaffDashboard token={state.token} user={state.user} />;
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
