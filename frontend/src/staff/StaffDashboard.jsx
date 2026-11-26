@@ -6,6 +6,30 @@ import { staffApi } from './staffService';
 import { tokenStore } from '../auth/authService';
 import './StaffDashboard.css';
 
+/* Same PSZ mark as the student site: an open book with a bookmark ribbon */
+function PszLogo() {
+  return (
+    <svg viewBox="0 0 32 32" className="staff-logo" aria-hidden="true">
+      <path
+        d="M16 9.5C13.2 7.6 9.6 7 5.5 7.4v15.4c4.1-.4 7.7.2 10.5 2.1 2.8-1.9 6.4-2.5 10.5-2.1V7.4C22.4 7 18.8 7.6 16 9.5Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      <path d="M16 9.5v15.4" stroke="currentColor" strokeWidth="1.8" />
+      <path d="M20 8.4v6.4l1.8-1.3 1.8 1.3V8" fill="currentColor" />
+    </svg>
+  );
+}
+
+function greeting(date) {
+  const hour = date.getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
 const NAVIGATION = [
   ['dashboard', '▦', 'Dashboard'],
   ['reservations', '▤', 'Reservations'],
@@ -57,13 +81,13 @@ function defaultWalkIn() {
   return { matric: '', room_id: '', start, end };
 }
 
-function Stat({ label: title, value, helper }) {
+function Stat({ label: title, value, helper, onClick }) {
   return (
-    <div className="staff-stat">
-      <span>{title}</span>
+    <button type="button" className="staff-stat" onClick={onClick}>
+      <span className="staff-stat-label">{title}</span>
       <strong>{value}</strong>
-      <small>{helper}</small>
-    </div>
+      <span className="staff-stat-hint">{helper}</span>
+    </button>
   );
 }
 
@@ -121,8 +145,16 @@ export default function StaffDashboard({ token, user }) {
   const [selected, setSelected] = useState(null);
   const [walkIn, setWalkIn] = useState(defaultWalkIn);
   const [summary, setSummary] = useState(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [now, setNow] = useState(new Date());
 
-    const load = useCallback(async () => {
+  // Keep the greeting / date fresh without a reload
+  useEffect(() => {
+    const clock = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(clock);
+  }, []);
+
+  const load = useCallback(async () => {
     try {
       const [snapshot, reviewQueue] = await Promise.all([
         staffApi.dashboard(token),
@@ -246,7 +278,7 @@ export default function StaffDashboard({ token, user }) {
     act(() => staffApi.setReportStatus(token, report.id, status), `${report.reference} is now ${label(status)}.`);
   }
 
-    function generateSummary() {
+  function generateSummary() {
     const categories = {};
     const recurring = {};
     const severities = {};
@@ -307,72 +339,129 @@ export default function StaffDashboard({ token, user }) {
     [data]
   );
 
+  // Next student still to arrive (earliest confirmed booking today)
+  const nextArrival = useMemo(
+    () =>
+      data.bookings
+        .filter((b) => b.status === 'confirmed')
+        .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)))[0],
+    [data.bookings]
+  );
+
+  // Room availability grouped by room type, same idea as the student dashboard
+  const roomAvailability = useMemo(() => {
+    const groups = {};
+    data.rooms.forEach((room) => {
+      const key = room.type || 'Other';
+      groups[key] = groups[key] || { type: key, open: 0, total: 0 };
+      groups[key].total += 1;
+      if (room.status === 'active') groups[key].open += 1;
+    });
+    return Object.values(groups);
+  }, [data.rooms]);
+
   const tabName = NAVIGATION.find(([id]) => id === tab)?.[2] ?? 'Dashboard';
   const initials = (user?.name || 'Library Staff').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
+  function go(id) {
+    setTab(id);
+    setNotice('');
+    setMenuOpen(false);
+  }
+
   return (
     <div className="staff-app">
-      <aside className="staff-sidebar">
+      <a className="staff-skip" href="#staff-main">Skip to content</a>
+
+      <aside id="staff-sidebar" className={`staff-sidebar ${menuOpen ? 'is-open' : ''}`} aria-label="Staff navigation">
         <div className="staff-brand">
-          <div className="staff-brand-mark">L</div>
+          <span className="staff-brand-mark" aria-hidden="true">
+            <PszLogo />
+          </span>
           <div>
-            <strong>Library Rooms</strong>
-            <small>UTM Booking System</small>
+            <strong>PSZ</strong>
+            <small>Perpustakaan Sultanah Zanariah</small>
           </div>
         </div>
 
-        <p className="staff-nav-label">LIBRARY STAFF WORKSPACE</p>
+        <p className="staff-nav-label">STAFF WORKSPACE</p>
 
-        <nav className="staff-nav" aria-label="Staff navigation">
+        <nav className="staff-nav">
           {NAVIGATION.map(([id, symbol, name]) => (
             <button
               key={id}
               type="button"
               className={tab === id ? 'staff-nav-link active' : 'staff-nav-link'}
-              onClick={() => {
-                setTab(id);
-                setNotice('');
-              }}
+              aria-current={tab === id ? 'page' : undefined}
+              onClick={() => go(id)}
             >
-              <span aria-hidden="true">{symbol}</span> {name}
+              <span aria-hidden="true">{symbol}</span>
+              {name}
+              {id === 'analyzer' && queue.pending_count > 0 && (
+                <em className="staff-nav-badge">{queue.pending_count}</em>
+              )}
             </button>
           ))}
         </nav>
 
         <div className="staff-sidebar-foot">
-          <strong>Staff Portal</strong>
+          <p>Staff Portal</p>
           <span>Room allocation · Key collection · Facility reports</span>
         </div>
       </aside>
 
+      {menuOpen && (
+        <button type="button" className="staff-overlay" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />
+      )}
+
       <div className="staff-main">
         <header className="staff-topbar">
-          <span>Library Room Booking System</span>
+          <div className="staff-topbar-start">
+            <button
+              type="button"
+              className="staff-menu-button"
+              aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+              aria-expanded={menuOpen}
+              aria-controls="staff-sidebar"
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              <span aria-hidden="true">☰</span>
+            </button>
+            <div className="staff-topbar-title">
+              <span className="staff-topbar-system">PSZ Room Booking</span>
+              <span className="staff-topbar-crumb"><span aria-hidden="true">›</span> {tabName}</span>
+            </div>
+          </div>
 
           <div className="staff-profile">
-            <span className="staff-avatar">{initials}</span>
-            <span>
+            <span className="staff-avatar" aria-hidden="true">{initials || 'S'}</span>
+            <span className="staff-profile-text">
               <strong>{user?.name || 'Library Staff'}</strong>
               <small>Front Desk</small>
             </span>
-            <button className="staff-secondary" type="button" onClick={signOut}>Sign out</button>
+            <button className="staff-signout" type="button" onClick={signOut}>Sign out</button>
           </div>
         </header>
 
-        <main className="staff-content">
-          <p className="staff-eyebrow">STAFF WORKSPACE</p>
-          <h1>{tabName}</h1>
-          <p className="staff-lead">
-            Manage reservations, keys, waiting lists and library facilities in one place.
-          </p>
-
-          <div className="staff-mode">
-            <span className="staff-demo-indicator">Live data · connected to the library database</span>
-            <button className="staff-secondary" type="button" onClick={load} disabled={busy}>Refresh</button>
+        <main id="staff-main" className="staff-content" tabIndex={-1}>
+          <div className="staff-heading">
+            <div>
+              <p className="staff-eyebrow">STAFF WORKSPACE</p>
+              <h1>{tab === 'dashboard' ? `${greeting(now)}, ${(user?.name || 'Staff').trim().split(/\s+/)[0]}` : tabName}</h1>
+              <p className="staff-lead">
+                {tab === 'dashboard'
+                  ? `${now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · Perpustakaan Sultanah Zanariah`
+                  : 'Manage reservations, keys, waiting lists and library facilities in one place.'}
+              </p>
+            </div>
+            <div className="staff-mode">
+              <span className="staff-demo-indicator">Live data · connected to the library database</span>
+              <button className="staff-refresh" type="button" onClick={load} disabled={busy}>↻ Refresh</button>
+            </div>
           </div>
 
           {loadError && (
-            <div className="staff-notice" role="alert">
+            <div className="staff-notice is-error" role="alert">
               {loadError}
               <button type="button" onClick={load}>Retry</button>
             </div>
@@ -388,33 +477,103 @@ export default function StaffDashboard({ token, user }) {
           {/* DASHBOARD */}
           {tab === 'dashboard' && (
             <>
+              <section className={`staff-hero ${nextArrival ? '' : 'is-quiet'}`}>
+                <div className="staff-hero-top">
+                  <span className="staff-hero-kicker">{nextArrival ? 'NEXT ARRIVAL' : 'FRONT DESK'}</span>
+                  {nextArrival && <span className="staff-hero-pill">{label(nextArrival.status)}</span>}
+                </div>
+                {nextArrival ? (
+                  <>
+                    <h2>{nextArrival.room_code} · {nextArrival.start_time}–{nextArrival.end_time}</h2>
+                    <p className="staff-hero-meta">
+                      {nextArrival.student}{nextArrival.matric ? ` · ${nextArrival.matric}` : ''}
+                      <span> · {nextArrival.reference}</span>
+                    </p>
+                    <div className="staff-hero-actions">
+                      <button type="button" className="staff-hero-primary" onClick={() => selectBooking(nextArrival)}>
+                        Open check-in
+                      </button>
+                      <button type="button" className="staff-hero-secondary" onClick={() => go('reservations')}>
+                        All reservations
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>{loading ? 'Loading today…' : 'No students waiting to check in'}</h2>
+                    <p className="staff-hero-meta">
+                      {loading ? 'Fetching the latest bookings.' : 'Everyone booked for today has arrived, or nothing is booked yet.'}
+                    </p>
+                    <div className="staff-hero-actions">
+                      <button type="button" className="staff-hero-primary" onClick={() => go('checkin')}>
+                        Open check-in desk
+                      </button>
+                    </div>
+                  </>
+                )}
+              </section>
+
               <div className="staff-stats">
-                <Stat label="Today's Bookings" value={loading ? '…' : stats.today} helper="Excluding cancelled" />
-                <Stat label="Checked In" value={loading ? '…' : stats.checkedIn} helper="In a room right now" />
-                <Stat label="Waiting Students" value={loading ? '…' : stats.waiting} helper="Same-day queue" />
-                <Stat label="Open Reports" value={loading ? '…' : stats.openReports} helper="Not yet resolved" />
+                <Stat label="Today's Bookings" value={loading ? '…' : stats.today} helper="Excluding cancelled →" onClick={() => go('reservations')} />
+                <Stat label="Checked In" value={loading ? '…' : stats.checkedIn} helper="In a room right now →" onClick={() => go('checkin')} />
+                <Stat label="Waiting Students" value={loading ? '…' : stats.waiting} helper="Same-day queue →" onClick={() => go('waitlist')} />
+                <Stat label="Open Reports" value={loading ? '…' : stats.openReports} helper="Not yet resolved →" onClick={() => go('reports')} />
               </div>
 
               <div className="staff-grid-two">
                 <section className="staff-panel">
                   <div className="staff-panel-heading">
                     <h2>Today&apos;s Reservations</h2>
-                    <button className="staff-text-button" type="button" onClick={() => setTab('reservations')}>
+                    <button className="staff-text-button" type="button" onClick={() => go('reservations')}>
                       All reservations →
                     </button>
                   </div>
                   <BookingTable bookings={data.bookings} onSelect={selectBooking} />
                 </section>
 
-                <section className="staff-panel">
-                  <h2>Quick Actions</h2>
-                  <div className="staff-actions">
-                    <button type="button" onClick={() => setTab('checkin')}>Open check-in desk</button>
-                    <button type="button" onClick={() => setTab('reservations')}>Register a walk-in</button>
-                    <button type="button" onClick={() => setTab('rooms')}>Manage rooms</button>
-                    <button type="button" onClick={() => setTab('reports')}>View issue reports</button>
-                  </div>
-                </section>
+                <div className="staff-side">
+                  <section className="staff-panel">
+                    <h2>Quick Actions</h2>
+                    <div className="staff-actions">
+                      <button type="button" onClick={() => go('checkin')}>
+                        <span aria-hidden="true">▣</span>
+                        <div><strong>Open check-in desk</strong><small>Scan a QR or enter a reference</small></div>
+                      </button>
+                      <button type="button" onClick={() => go('reservations')}>
+                        <span aria-hidden="true">▤</span>
+                        <div><strong>Register a walk-in</strong><small>Student without a booking</small></div>
+                      </button>
+                      <button type="button" onClick={() => go('rooms')}>
+                        <span aria-hidden="true">▥</span>
+                        <div><strong>Manage rooms</strong><small>Active or under maintenance</small></div>
+                      </button>
+                      <button type="button" onClick={() => go('reports')}>
+                        <span aria-hidden="true">✎</span>
+                        <div><strong>View issue reports</strong><small>Facility problems from students</small></div>
+                      </button>
+                    </div>
+                  </section>
+
+                  <section className="staff-panel">
+                    <h2>Room availability</h2>
+                    <ul className="staff-availability">
+                      {roomAvailability.length === 0 && <li className="staff-muted">No rooms found.</li>}
+                      {roomAvailability.map((item) => (
+                        <li key={item.type}>
+                          <div className="staff-availability-row">
+                            <span>{item.type} rooms</span>
+                            <span className={item.open === 0 ? 'full' : ''}>
+                              {item.open === 0 ? 'None open' : `${item.open} of ${item.total} open`}
+                            </span>
+                          </div>
+                          <div className="staff-bar" aria-hidden="true">
+                            <span style={{ width: `${item.total ? (item.open / item.total) * 100 : 0}%` }} />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
               </div>
             </>
           )}
@@ -849,10 +1008,12 @@ export default function StaffDashboard({ token, user }) {
             </>
           )}
 
-          <footer className="staff-footer">
-            NOIDEA · Universiti Teknologi Malaysia · Live library data
-          </footer>
         </main>
+
+        <footer className="staff-footer">
+          <span>PSZ Room Booking System · Staff workspace · Live library data</span>
+          <span>NOIDEA · Universiti Teknologi Malaysia</span>
+        </footer>
       </div>
     </div>
   );
