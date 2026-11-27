@@ -45,6 +45,16 @@ class StaffDeskController extends Controller
 
         $rooms = Room::orderBy('room_code')->get();
 
+        // Calculate actual availability from live Supabase bookings.
+        // A room can be active but occupied at this very moment.
+        $now = Carbon::now();
+        $occupiedRoomIds = Booking::active()
+            ->where('start_at', '<=', $now)
+            ->where('end_at', '>', $now)
+            ->pluck('room_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         $waitlist = WaitingList::with('user:id,name')
             ->whereIn('status', WaitingList::ACTIVE_STATUSES)
             ->orderBy('joined_at')->orderBy('id')
@@ -70,6 +80,9 @@ class StaffDeskController extends Controller
                 'capacity' => $r->capacity,
                 'floor' => $r->location,
                 'status' => $r->status,
+                'available_now' => $r->status === 'active'
+                    && ! in_array((int) $r->id, $occupiedRoomIds, true),
+                'occupied_now' => in_array((int) $r->id, $occupiedRoomIds, true),
             ])->values(),
             'waitlist' => $waitlist->map(function (WaitingList $w) {
                 $start = $w->wanted_start->copy()->setTimezone(self::TZ);
