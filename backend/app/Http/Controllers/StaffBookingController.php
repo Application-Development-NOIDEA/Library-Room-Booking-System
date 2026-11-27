@@ -63,6 +63,7 @@ class StaffBookingController extends Controller
                 'reference'    => 'BK-'.str_pad((string) $b->id, 4, '0', STR_PAD_LEFT),
                 'student'      => $b->user?->name,
                 'matric'       => $b->user?->student_id,
+                'room_id'      => $b->room_id,
                 'room_code'    => $b->room?->room_code,
                 'room_name'    => $b->room?->room_name,
                 'room_group'   => RoomController::GROUPS[$type]['name'] ?? null,
@@ -71,6 +72,7 @@ class StaffBookingController extends Controller
                 'end_time'     => $end->format('H:i'),
                 'status'       => $b->status,
                 'status_label' => self::STATUS_LABELS[$b->status] ?? $b->status,
+                'is_closure'   => $b->user?->role === 'staff',
             ];
         })->values();
 

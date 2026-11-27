@@ -65,3 +65,15 @@ export const staffApi = {
   setReportStatus: (token, id, status) =>
     staffRequest(token, `/reports/${id}/status`, { method: 'PATCH', body: { status } }),
 };
+
+/** Add / edit / cancel bookings and close rooms (ReservationsPanel). */
+export const staffManageApi = {
+  roomOptions: (token) => staffRequest(token, '/room-options'),
+  addBooking: (token, body) => staffRequest(token, '/bookings', { method: 'POST', body }),
+  editBooking: (token, id, body) => staffRequest(token, `/bookings/${id}`, { method: 'PATCH', body }),
+  cancelBooking: (token, id, reason) =>
+    staffRequest(token, `/bookings/${id}/cancel`, { method: 'POST', body: { reason } }),
+  closures: (token) => staffRequest(token, '/closures'),
+  closeRoom: (token, body) => staffRequest(token, '/closures', { method: 'POST', body }),
+  reopen: (token, id) => staffRequest(token, `/closures/${id}`, { method: 'DELETE' }),
+};

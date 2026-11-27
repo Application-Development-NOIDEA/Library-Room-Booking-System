@@ -12,7 +12,7 @@ import {
   listMyWaiting,
 } from "./waitingListService";
 
-const DAYS_AHEAD = 14;
+const DAYS_AHEAD = 7; // one week: today + the next 6 days
 const REFRESH_EVERY_MS = 20 * 1000;
 const MIN_MINUTES_LEFT = 15; // same as WaitingListService::MIN_MINUTES_LEFT
 

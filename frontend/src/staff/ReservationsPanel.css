@@ -1,0 +1,149 @@
+/* Staff "All Reservations": add / edit / cancel / close-a-room tools */
+
+.reservations-panel .res-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.reservations-panel .res-notice {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.reservations-panel .res-notice.ok {
+  background: #e5f5ec;
+  color: #1b774d;
+}
+
+.reservations-panel .res-notice.error {
+  background: #fdeaea;
+  color: #a12626;
+}
+
+.reservations-panel .res-notice button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.reservations-panel .res-form {
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 1px solid #ece4e8;
+  border-left: 3px solid var(--gold, #b49250);
+  border-radius: 0 12px 12px 0;
+  background: #fffdf8;
+}
+
+.reservations-panel .res-form h3,
+.reservations-panel .res-closures h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+}
+
+.reservations-panel .res-hint {
+  margin: 0 0 12px;
+  color: var(--muted, #746d78);
+  font-size: 12px;
+}
+
+.reservations-panel .res-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.reservations-panel .res-form-grid label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted, #746d78);
+  font-size: 12px;
+}
+
+.reservations-panel .res-form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.reservations-panel .res-closures {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #faf7f8;
+}
+
+.reservations-panel .res-closures ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.reservations-panel .res-closures li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.reservations-panel .res-count {
+  margin: 6px 0 10px;
+}
+
+.reservations-panel .res-actions,
+.reservations-panel .res-cancel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.reservations-panel .res-cancel .staff-input {
+  width: 170px;
+  padding: 7px 10px;
+}
+
+.reservations-panel .res-link {
+  padding: 5px 9px;
+  border: 1px solid #e9dce2;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--maroon, #75243a);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.reservations-panel .res-link:hover:not(:disabled) {
+  background: #f8f0f3;
+}
+
+.reservations-panel .res-link.danger {
+  border-color: #f1caca;
+  color: #a12626;
+}
+
+.reservations-panel .res-link:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.reservations-panel .res-row-closure td {
+  background: #fbf8f1;
+}

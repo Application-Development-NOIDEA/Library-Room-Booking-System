@@ -22,7 +22,7 @@ class BookingController extends Controller
     private const OPEN_HOUR = 8;
     public const CLOSE_HOUR = 22;
 
-    private const MAX_DAYS_AHEAD = 14;
+    private const MAX_DAYS_AHEAD = 6; // one week: today + the next 6 days
     private const MAX_UPCOMING_PER_STUDENT = 3;
 
     /** Carrels use fixed 4-hour blocks; every other bookable type uses hourly slots of 1 or 2 hours. */
@@ -267,7 +267,7 @@ class BookingController extends Controller
             return 'You can’t book a date in the past.';
         }
         if ($day->greaterThan($today->copy()->addDays(self::MAX_DAYS_AHEAD))) {
-            return 'You can book up to '.self::MAX_DAYS_AHEAD.' days ahead.';
+            return 'You can only book up to one week ahead.';
         }
 
         return null;

@@ -4,7 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { USE_MOCK_AUTH } from "../auth/authService";
 import { createBooking, formatBookingDate, formatTimeRange, getAvailability } from "./bookingService";
 
-const DAYS_AHEAD = 14;
+const DAYS_AHEAD = 7; // one week: today + the next 6 days
 
 /** Today and the next 13 days, as YYYY-MM-DD in the student's local (Malaysian) time. */
 function upcomingDays() {

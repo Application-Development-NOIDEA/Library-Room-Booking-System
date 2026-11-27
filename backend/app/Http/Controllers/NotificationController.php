@@ -31,6 +31,9 @@ class NotificationController extends Controller
         'booking_no_show' => 'Booking released (no-show)',
         'booking_start_reminder' => 'Your booking starts soon',
         'booking_checkout_reminder' => 'Time to check out soon',
+        'booking_added_by_staff' => 'Staff booked a room for you',
+        'booking_changed_by_staff' => 'Your booking was changed',
+        'booking_cancelled_by_staff' => 'Your booking was cancelled',
     ];
 
     /** Where the "action" button in the bell takes the student. */
@@ -40,6 +43,9 @@ class NotificationController extends Controller
         'booking_no_show' => ['label' => 'Book again', 'page' => 'rooms'],
         'booking_start_reminder' => ['label' => 'Show my QR', 'page' => 'dashboard'],
         'booking_checkout_reminder' => ['label' => 'Extend or check out', 'page' => 'dashboard'],
+        'booking_added_by_staff' => ['label' => 'See my bookings', 'page' => 'bookings'],
+        'booking_changed_by_staff' => ['label' => 'See my bookings', 'page' => 'bookings'],
+        'booking_cancelled_by_staff' => ['label' => 'Book again', 'page' => 'rooms'],
     ];
 
     public function index(Request $request): JsonResponse

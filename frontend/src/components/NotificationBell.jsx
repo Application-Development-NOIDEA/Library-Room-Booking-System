@@ -27,6 +27,27 @@ const SAMPLE = [
   },
 ];
 
+const CAN_ALERT = typeof window !== "undefined" && "Notification" in window;
+
+/** A pop-up from the browser (works while the site is open in any tab, even in the background). */
+function browserAlert(item, onOpen) {
+  if (!CAN_ALERT || Notification.permission !== "granted") return;
+  try {
+    const alert = new Notification(`PSZ: ${item.title}`, {
+      body: item.text,
+      tag: `psz-notification-${item.id}`, // never show the same one twice
+      requireInteraction: Boolean(item.urgent),
+    });
+    alert.onclick = () => {
+      window.focus();
+      onOpen(item);
+      alert.close();
+    };
+  } catch {
+    /* some browsers only allow alerts from a service worker: the bell still works */
+  }
+}
+
 async function call(path, token, method = "GET") {
   const response = await fetch(`${API_URL}${path}`, {
     method,
@@ -52,13 +73,24 @@ export default function NotificationBell({ onNavigate }) {
   const [items, setItems] = useState(USE_MOCK_AUTH ? SAMPLE : []);
   const [unread, setUnread] = useState(USE_MOCK_AUTH ? SAMPLE.filter((n) => !n.read).length : 0);
   const [error, setError] = useState("");
+  const [permission, setPermission] = useState(CAN_ALERT ? Notification.permission : "unsupported");
   const box = useRef(null);
+  const seen = useRef(null); // ids we already know about (null = first load: don't pop up old ones)
+  const openItem = useRef(null);
 
   const load = useCallback(async () => {
     if (USE_MOCK_AUTH || !token) return;
     try {
       const data = await call("/notifications", token);
-      setItems(data.notifications ?? []);
+      const list = data.notifications ?? [];
+
+      // Pop up only the ones that arrived since the last check
+      if (seen.current) {
+        list.filter((n) => !n.read && !seen.current.has(n.id)).forEach((n) => browserAlert(n, (item) => openItem.current?.(item)));
+      }
+      seen.current = new Set(list.map((n) => n.id));
+
+      setItems(list);
       setUnread(data.unread ?? 0);
       setError("");
     } catch {
@@ -120,7 +152,17 @@ export default function NotificationBell({ onNavigate }) {
   function act(item) {
     markRead(item);
     setOpen(false);
-    onNavigate?.(item.action.page);
+    if (item.action) onNavigate?.(item.action.page);
+  }
+  openItem.current = act; // used when a browser pop-up is clicked
+
+  async function allowAlerts() {
+    if (!CAN_ALERT) return;
+    const answer = await Notification.requestPermission();
+    setPermission(answer);
+    if (answer === "granted") {
+      browserAlert({ id: "welcome", title: "Browser alerts are on", text: "You'll get a pop-up here when a room is offered to you or a booking changes." }, () => {});
+    }
   }
 
   const hasUrgent = items.some((n) => n.urgent && !n.read);
@@ -158,6 +200,21 @@ export default function NotificationBell({ onNavigate }) {
               </button>
             )}
           </div>
+
+          {permission === "default" && (
+            <div className="bell-permission">
+              <span>Get a pop-up even when this tab is in the background.</span>
+              <button type="button" onClick={allowAlerts}>
+                Turn on browser alerts
+              </button>
+            </div>
+          )}
+          {permission === "denied" && (
+            <p className="bell-permission muted">
+              Browser alerts are blocked. To turn them on, click the lock icon next to the address bar and allow
+              notifications.
+            </p>
+          )}
 
           {error && <p className="bell-empty">{error}</p>}
 
