@@ -33,6 +33,29 @@ async function staffRequest(token, path, { method = 'GET', body } = {}) {
   return data;
 }
 
+/** POST /api/staff/bookings/scan. Resolves with the result even when the code is refused. */
+async function scanRequest(token, query) {
+  let response;
+  try {
+    response = await fetch(`${API_URL}/staff/bookings/scan`, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ query }),
+    });
+  } catch {
+    throw new Error("Can't reach the server. Check that the backend is running.");
+  }
+  const data = await response.json().catch(() => ({}));
+  if (response.status === 401) throw new Error('Your session has expired. Please sign in again.');
+  if (response.status === 403) throw new Error('This account does not have staff access.');
+  if (response.status === 429) throw new Error('Too many scans at once. Wait a moment and try again.');
+  return { ok: response.ok, ...data };
+}
+
 /** GET /api/staff/bookings  (used by the Reservations tab) */
 export function listStaffBookings(token, { date, allDates, status } = {}) {
   const params = new URLSearchParams();
@@ -52,6 +75,8 @@ export const staffApi = {
     staffRequest(token, '/report-summaries', { method: 'POST', body: { from, to } }),
 
   lookup: (token, query) => staffRequest(token, '/bookings/lookup', { method: 'POST', body: { query } }),
+  // Scan a QR: checks the student in, or out if they are already checked in
+  scan: (token, query) => scanRequest(token, query),
   checkIn: (token, id) => staffRequest(token, `/bookings/${id}/check-in`, { method: 'POST' }),
   checkOut: (token, id) => staffRequest(token, `/bookings/${id}/check-out`, { method: 'POST' }),
   noShow: (token, id) => staffRequest(token, `/bookings/${id}/no-show`, { method: 'POST' }),

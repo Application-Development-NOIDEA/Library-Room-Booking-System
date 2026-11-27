@@ -268,3 +268,15 @@ body:has(.staff-app) { margin: 0; background: #f7f3f4; }
   .staff-content { animation: none; }
   .staff-app *, .staff-sidebar { transition: none !important; }
 }
+/* QR scan result banner (check-in desk) */
+.staff-scan-result { display: flex; gap: 14px; align-items: flex-start; margin: 4px 0 6px; padding: 14px 16px; border: 1px solid #a7d7b5; border-radius: 12px; background: #eefaf1; color: #14532d; }
+.staff-scan-result strong { display: block; font-size: 15px; }
+.staff-scan-result p { margin: 2px 0 0; font-size: 13px; line-height: 1.55; }
+.staff-scan-result small { margin-left: auto; white-space: nowrap; font-size: 11px; opacity: 0.7; }
+.staff-scan-icon { display: grid; flex: none; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #1f9d55; color: #fff; font-weight: 700; }
+.staff-scan-result.is-warn { border-color: #f0c38a; background: #fff4e3; color: #7a4b05; }
+.staff-scan-result.is-warn .staff-scan-icon { background: #d97706; }
+.staff-scan-result.is-error { border-color: #f0c9c6; background: #fff8f7; color: #8a1f17; }
+.staff-scan-result.is-error .staff-scan-icon { background: #b3261e; }
+.staff-desk-hint { margin: 10px 0 0 !important; color: var(--muted); font-size: 13px !important; }
+.staff-button-row button:disabled { cursor: not-allowed; }
