@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { QRCodeSVG } from "qrcode.react";
 import { USE_MOCK_AUTH } from "../auth/authService";
-import { cancelBooking, getBookingQr, requestExtension } from "./bookingService";
+import { cancelBooking, requestExtension } from "./bookingService";
+import BookingQr from "./BookingQr";
 import "./NextBookingCard.css";
 
 const CHECK_IN_MINUTES = 15; // after the start, before the room goes to the waiting list
@@ -59,7 +59,6 @@ function stageOf(booking, now) {
 export default function NextBookingCard({ booking, token, onChanged, onNavigate }) {
   const [now, setNow] = useState(() => new Date());
   const [panel, setPanel] = useState(null); // null | "qr" | "extend" | "cancel"
-  const [qr, setQr] = useState({ loading: false, value: "", error: "" });
   const [hours, setHours] = useState(1);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState(null); // { tone: "ok" | "error", text }
@@ -132,19 +131,8 @@ export default function NextBookingCard({ booking, token, onChanged, onNavigate 
     view = { label: "Ended", big: "Done", progress: 0, hint: "This booking has ended." };
   }
 
-  async function openQr() {
+  function openQr() {
     setPanel("qr");
-    if (USE_MOCK_AUTH || !apiId) {
-      setQr({ loading: false, value: `DEMO-${booking.id}`, error: "" });
-      return;
-    }
-    setQr({ loading: true, value: "", error: "" });
-    try {
-      const data = await getBookingQr(token, apiId);
-      setQr({ loading: false, value: data.qr_token ?? data.token ?? "", error: "" });
-    } catch (err) {
-      setQr({ loading: false, value: "", error: err.message });
-    }
   }
 
   async function run(task, okText) {
@@ -240,18 +228,14 @@ export default function NextBookingCard({ booking, token, onChanged, onNavigate 
       {/* Panels */}
       {panel === "qr" && (
         <div className="next-card-panel qr">
-          {qr.loading ? (
-            <p>Generating your QR code…</p>
-          ) : qr.error ? (
-            <p role="alert">{qr.error}</p>
-          ) : (
-            <>
-              <div className="next-card-qr">
-                <QRCodeSVG value={qr.value} size={180} level="M" marginSize={2} />
-              </div>
-              <p>Show this at the library counter. Opening a new QR code makes the old one stop working.</p>
-            </>
-          )}
+          <BookingQr
+            key={booking.id}
+            token={token}
+            bookingId={USE_MOCK_AUTH ? null : apiId}
+            reference={booking.id}
+            size={180}
+            onStatusChange={() => onChanged?.()}
+          />
           <button type="button" className="next-btn ghost" onClick={() => setPanel(null)}>
             Close
           </button>

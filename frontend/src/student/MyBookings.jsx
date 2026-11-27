@@ -1,6 +1,6 @@
-import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useState } from "react";
 import "./MyBookings.css";
+import BookingQr from "./BookingQr";
 import { useAuth } from "../auth/AuthContext";
 import { USE_MOCK_AUTH } from "../auth/authService";
 import {
@@ -8,7 +8,6 @@ import {
   formatBookingDate,
   formatTime,
   formatTimeRange,
-  getBookingQr,
   listMyBookings,
   requestExtension,
 } from "./bookingService";
@@ -110,7 +109,6 @@ export default function MyBookings() {
   const [cancelling, setCancelling] = useState(false);
   const [dialog, setDialog] = useState(null);
   const [notice, setNotice] = useState("");
-  const [qrState, setQrState] = useState({ loading: false, token: "", error: "" });
   const [extendHours, setExtendHours] = useState(1);
   const [extending, setExtending] = useState(false);
   const [extendError, setExtendError] = useState("");
@@ -142,19 +140,8 @@ export default function MyBookings() {
     (booking) => booking.tab === activeTab
   );
 
-  async function openQr(booking) {
+  function openQr(booking) {
     setDialog({ type: "qr", booking });
-    if (USE_MOCK_AUTH) {
-      setQrState({ loading: false, token: `DEMO-${booking.id}`, error: "" });
-      return;
-    }
-    setQrState({ loading: true, token: "", error: "" });
-    try {
-      const data = await getBookingQr(token, booking.apiId);
-      setQrState({ loading: false, token: data.qr_token ?? data.token ?? data.qr ?? "", error: "" });
-    } catch (err) {
-      setQrState({ loading: false, token: "", error: err.message });
-    }
   }
 
   function openExtension(booking) {
@@ -229,8 +216,9 @@ export default function MyBookings() {
       <div className="booking-guidance">
         <span className="guidance-mark" aria-hidden="true">i</span>
         <p>
-          Show your booking QR code at the library counter.
-          Check in within 15 minutes of your booking start time.
+          Show your booking QR code at the library counter to check in, and show it again when you leave
+          to check out. If you don't check in within 15 minutes of the start time, the QR expires and the
+          booking is cancelled.
         </p>
       </div>
 
@@ -412,42 +400,13 @@ export default function MyBookings() {
            
 ) : dialog.type === "qr" ? (
   <div className="qr-placeholder">
-    {qrState.loading ? (
-      <p>Generating your booking QR code...</p>
-    ) : qrState.error ? (
-      <p role="alert">{qrState.error}</p>
-    ) : qrState.token ? (
-      <>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            margin: "16px 0",
-          }}
-        >
-          <QRCodeSVG
-            value={qrState.token}
-            size={220}
-            level="M"
-            marginSize={4}
-          />
-        </div>
-
-        <strong>{dialog.booking.id}</strong>
-
-        <p>
-          Show this QR code to library staff
-          when checking in.
-        </p>
-
-        <small>
-          Keep this QR code private.
-          Generating another one invalidates this code.
-        </small>
-      </>
-    ) : (
-      <p>QR code is unavailable.</p>
-    )}
+    <BookingQr
+      key={dialog.booking.id}
+      token={token}
+      bookingId={USE_MOCK_AUTH ? null : dialog.booking.apiId}
+      reference={dialog.booking.id}
+      onStatusChange={load}
+    />
   </div>
 ) : (
 

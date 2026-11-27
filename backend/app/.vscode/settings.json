@@ -1,0 +1,12 @@
+
+{
+    "intelephense.environment.includePaths": [
+        "vendor"
+    ],
+    "intelephense.files.exclude": [
+        "**/.git/**",
+        "**/node_modules/**",
+        "**/storage/framework/**"
+    ]
+}
+

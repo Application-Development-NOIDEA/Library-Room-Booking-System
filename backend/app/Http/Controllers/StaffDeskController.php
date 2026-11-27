@@ -9,6 +9,7 @@ use App\Models\IssueReport;
 use App\Models\Room;
 use App\Models\User;
 use App\Models\WaitingList;
+use App\Services\QR\BookingQrService;
 use App\Services\WaitingListService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,10 +25,9 @@ class StaffDeskController extends Controller
 {
     private const TZ = 'Asia/Kuala_Lumpur';
 
-    /** Staff may check a student in this long before the booking starts. */
-    private const EARLY_CHECK_IN_MINUTES = 15;
-
     private const MAX_WALK_IN_HOURS = 4;
+
+    public function __construct(private BookingQrService $qr) {}
 
     /* ------------------------------------------------------------------
      | GET /api/staff/dashboard
@@ -38,7 +38,7 @@ class StaffDeskController extends Controller
         $dayStart = Carbon::now(self::TZ)->startOfDay();
         $dayEnd = $dayStart->copy()->endOfDay();
 
-        $bookings = Booking::with(['room', 'user'])
+        $bookings = Booking::with(['room', 'user', 'checkins'])
             ->overlapping($dayStart->copy()->setTimezone($appTz), $dayEnd->copy()->setTimezone($appTz))
             ->orderBy('start_at')->orderBy('id')
             ->get();
@@ -123,15 +123,7 @@ class StaffDeskController extends Controller
     {
         $query = trim($request->validate(['query' => ['required', 'string', 'max:200']])['query']);
 
-        $booking = null;
-        if (preg_match('/^BK-?(\d+)$/i', $query, $match)) {
-            $booking = Booking::with(['room', 'user'])->find((int) $match[1]);
-        } elseif (preg_match('/^[a-f0-9]{64}$/i', $query)) {
-            // The student's QR holds a random token; only its hash is stored.
-            $booking = Booking::with(['room', 'user'])
-                ->where('qr_token_hash', hash('sha256', strtolower($query)))
-                ->first();
-        }
+        $booking = $this->find($query);
 
         if (! $booking) {
             return response()->json(['message' => 'No booking found for that reference or QR code.'], 404);
@@ -141,41 +133,74 @@ class StaffDeskController extends Controller
     }
 
     /* ------------------------------------------------------------------
+     | POST /api/staff/bookings/scan   { query: <QR token> | "BK-0012" }
+     |
+     | One step at the desk: a scanned QR checks the student in, and the
+     | same QR scanned again checks them out. Expired codes are refused.
+     * ------------------------------------------------------------------ */
+    public function scan(Request $request): JsonResponse
+    {
+        $query = trim($request->validate(['query' => ['required', 'string', 'max:200']])['query']);
+        $booking = $this->find($query);
+
+        if (! $booking) {
+            return response()->json([
+                'message' => preg_match(BookingQrService::TOKEN_PATTERN, $query)
+                    ? 'This QR code is not valid. It may be an old code: ask the student to open the QR again in My Bookings.'
+                    : 'No booking found for that reference or QR code.',
+                'result' => 'invalid',
+            ], 404);
+        }
+
+        $state = $this->qr->state($booking);
+        $action = match ($state) {
+            'check_in' => 'checked_in',
+            'check_out' => 'checked_out',
+            default => null,
+        };
+
+        if (! $action) {
+            $message = match ($state) {
+                'not_yet_open' => 'Too early. Check-in opens at '
+                    .$this->qr->checkInOpensAt($booking)->setTimezone(self::TZ)->format('H:i').'.',
+                'used' => 'This student has already checked out.',
+                default => $booking->status === Booking::STATUS_CONFIRMED
+                    ? 'This QR code has expired: the student did not check in within '
+                        .WaitingListService::CHECK_IN_GRACE_MINUTES.' minutes, so the booking is being cancelled.'
+                    : 'This QR code is no longer valid (booking is '.str_replace('_', ' ', $booking->status).').',
+            };
+
+            return response()->json([
+                'message' => $message,
+                'result' => $state,
+                'booking' => $this->row($booking),
+            ], 422);
+        }
+
+        $error = $action === 'checked_in'
+            ? $this->qr->checkIn($booking, $request->user())
+            : $this->qr->checkOut($booking, $request->user());
+
+        if ($error) {
+            return response()->json(['message' => $error, 'result' => 'refused', 'booking' => $this->row($booking->fresh(['room', 'user']))], 422);
+        }
+
+        $fresh = $booking->fresh(['room', 'user']);
+
+        return response()->json([
+            'result' => $action,
+            'message' => ($fresh->user?->name ?? 'Student').($action === 'checked_in' ? ' is checked in to ' : ' is checked out of ')
+                .($fresh->room?->room_name ?? 'the room').'.',
+            'booking' => $this->row($fresh),
+        ]);
+    }
+
+    /* ------------------------------------------------------------------
      | POST /api/staff/bookings/{booking}/check-in
      * ------------------------------------------------------------------ */
     public function checkIn(Request $request, Booking $booking): JsonResponse
     {
-        $now = Carbon::now();
-
-        $error = DB::transaction(function () use ($booking, $request, $now) {
-            $b = Booking::whereKey($booking->id)->lockForUpdate()->first();
-
-            if ($b->status === Booking::STATUS_NO_SHOW) {
-                return 'This booking was already released as a no-show.';
-            }
-            if ($b->status !== Booking::STATUS_CONFIRMED) {
-                return 'Only confirmed bookings can be checked in (this one is '.str_replace('_', ' ', $b->status).').';
-            }
-            if ($now->lessThan($b->start_at->copy()->subMinutes(self::EARLY_CHECK_IN_MINUTES))) {
-                return 'Too early. Check-in opens '.self::EARLY_CHECK_IN_MINUTES.' minutes before the start time.';
-            }
-            if ($now->greaterThanOrEqualTo($b->end_at)) {
-                return 'This booking has already ended.';
-            }
-
-            $b->status = Booking::STATUS_CHECKED_IN;
-            $b->save();
-
-            BookingCheckin::create([
-                'booking_id' => $b->id,
-                'checked_in_at' => $now,
-                'checked_in_by' => $request->user()->id,
-            ]);
-
-            return null;
-        });
-
-        if ($error) {
+        if ($error = $this->qr->checkIn($booking, $request->user())) {
             return response()->json(['message' => $error], 422);
         }
 
@@ -187,28 +212,7 @@ class StaffDeskController extends Controller
      * ------------------------------------------------------------------ */
     public function checkOut(Request $request, Booking $booking): JsonResponse
     {
-        $now = Carbon::now();
-
-        $error = DB::transaction(function () use ($booking, $request, $now) {
-            $b = Booking::whereKey($booking->id)->lockForUpdate()->first();
-
-            if ($b->status !== Booking::STATUS_CHECKED_IN) {
-                return 'Only students who are checked in can be checked out.';
-            }
-
-            $b->status = Booking::STATUS_CHECKED_OUT;
-            $b->save();
-
-            $checkin = BookingCheckin::where('booking_id', $b->id)->latest('id')->first()
-                ?? new BookingCheckin(['booking_id' => $b->id]);
-            $checkin->checked_out_at = $now;
-            $checkin->checked_out_by = $request->user()->id;
-            $checkin->save();
-
-            return null;
-        });
-
-        if ($error) {
+        if ($error = $this->qr->checkOut($booking, $request->user())) {
             return response()->json(['message' => $error], 422);
         }
 
@@ -431,6 +435,17 @@ class StaffDeskController extends Controller
 
     /* ================================================================== */
 
+    /** A booking from a reference (BK-0012) or a scanned QR token. */
+    private function find(string $query): ?Booking
+    {
+        if (preg_match('/^BK-?(\d+)$/i', $query, $match)) {
+            return Booking::with(['room', 'user'])->find((int) $match[1]);
+        }
+
+        // The student's QR holds a random token; only its hash is stored.
+        return $this->qr->findByToken($query);
+    }
+
     private function row(Booking $b): array
     {
         $start = $b->start_at->copy()->setTimezone(self::TZ);
@@ -447,6 +462,9 @@ class StaffDeskController extends Controller
             'start_time' => $start->format('H:i'),
             'end_time' => $end->format('H:i'),
             'status' => $b->status,
+            'qr_state' => $this->qr->state($b),
+            'check_in_deadline' => $this->qr->checkInDeadline($b)->setTimezone(self::TZ)->format('H:i'),
+            ...$this->qr->times($b),
         ];
     }
 }

@@ -3,7 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BookingExtensionController;
-use App\Http\Controllers\BookingQrController;
+use App\Http\Controllers\Api\V1\QR\BookingQrController;
 use App\Http\Controllers\IssueReportController;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\NotificationController;
@@ -58,6 +58,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Generate a secure booking QR token
         Route::post('/bookings/{booking}/qr', [BookingQrController::class, 'issue'])->middleware('throttle:10,1');
+        // Live status while the QR is on screen (checked in / checked out / expired)
+        Route::get('/bookings/{booking}/qr/status', [BookingQrController::class, 'status'])->middleware('throttle:120,1');
 
         // Waiting list
         Route::get('/waiting-list/mine', [WaitingListController::class, 'mine']);
@@ -97,6 +99,8 @@ Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(functi
     // Front desk
     Route::get('/dashboard', [StaffDeskController::class, 'dashboard']);
     Route::post('/bookings/lookup', [StaffDeskController::class, 'lookup'])->middleware('throttle:60,1');
+    // Scan a QR: checks in, or checks out if already checked in
+    Route::post('/bookings/scan', [StaffDeskController::class, 'scan'])->middleware('throttle:120,1');
     Route::post('/bookings/{booking}/check-in', [StaffDeskController::class, 'checkIn'])->whereNumber('booking');
     Route::post('/bookings/{booking}/check-out', [StaffDeskController::class, 'checkOut'])->whereNumber('booking');
     Route::post('/bookings/{booking}/no-show', [StaffDeskController::class, 'noShow'])->whereNumber('booking');

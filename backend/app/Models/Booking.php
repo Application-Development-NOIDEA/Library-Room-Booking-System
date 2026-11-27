@@ -5,11 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-/**
- * A room booking. Matches the `bookings` table in database/database.sql
- * (start_at / end_at, created_at only).
- */
 class Booking extends Model
 {
     public const UPDATED_AT = null;
@@ -21,7 +18,6 @@ class Booking extends Model
     public const STATUS_CANCELLED = 'cancelled';
     public const STATUS_NO_SHOW = 'no_show';
 
-    /** Statuses that still hold the room (block other bookings for that time). */
     public const ACTIVE_STATUSES = [self::STATUS_HELD, self::STATUS_CONFIRMED, self::STATUS_CHECKED_IN];
 
     protected $fillable = [
@@ -29,6 +25,17 @@ class Booking extends Model
     ];
 
     protected $hidden = ['qr_token_hash'];
+
+    public const FINISHED_STATUSES = [self::STATUS_CHECKED_OUT, self::STATUS_CANCELLED, self::STATUS_NO_SHOW];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Booking $booking) {
+            if (in_array($booking->status, self::FINISHED_STATUSES, true)) {
+                $booking->qr_token_hash = null;
+            }
+        });
+    }
 
     protected function casts(): array
     {
@@ -41,7 +48,6 @@ class Booking extends Model
         ];
     }
 
-    /** Reference shown to students, e.g. BK-0012. */
     public function getReferenceAttribute(): string
     {
         return 'BK-'.str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
@@ -52,18 +58,21 @@ class Booking extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function checkins(): HasMany
+    {
+        return $this->hasMany(BookingCheckin::class);
+    }
+
     public function room(): BelongsTo
     {
         return $this->belongsTo(Room::class);
     }
 
-    /** Bookings that are still holding their room. */
     public function scopeActive(Builder $query): void
     {
         $query->whereIn('status', self::ACTIVE_STATUSES);
     }
 
-    /** Bookings whose time overlaps [$start, $end). */
     public function scopeOverlapping(Builder $query, $start, $end): void
     {
         $query->where('start_at', '<', $end)->where('end_at', '>', $start);

@@ -1,0 +1,11 @@
+
+{
+    "workbench.colorTheme": "Dark+",
+    "files.exclude": {
+        "**/.agents": true,
+        "**/node_modules": true,
+        "**/storage/framework": true,
+        "**/vendor": false
+    },
+    "php.validate.executablePath": "C:\\Users\\LENOVO\\.config\\herd\\bin\\php85\\php.exe"
+}

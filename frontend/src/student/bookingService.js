@@ -122,3 +122,8 @@ export async function getBookingQr(token, bookingId) {
 export async function requestExtension(token, bookingId, hours) {
   return request(`/bookings/${bookingId}/extend`, { method: "POST", token, body: { hours } });
 }
+
+/** Live QR status, polled while the QR is on screen: confirmed / checked_in / checked_out / no_show… */
+export async function getBookingQrStatus(token, bookingId) {
+  return request(`/bookings/${bookingId}/qr/status`, { token });
+}
