@@ -13,6 +13,7 @@ use App\Http\Controllers\RoomController;
 use App\Http\Controllers\RoomNoticeController;
 use App\Http\Controllers\RoomListController;
 use App\Http\Controllers\StaffBookingController;
+use App\Http\Controllers\StaffManageController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\WaitingListController;
 use App\Http\Controllers\StaffIssueReviewController;
@@ -83,6 +84,15 @@ Route::middleware('auth:sanctum')->group(function () {
 // Staff (library staff only)
 Route::middleware(['auth:sanctum', 'role:staff'])->prefix('staff')->group(function () {
     Route::get('/bookings', [StaffBookingController::class, 'index']);
+
+    // Add / edit / cancel bookings, close rooms for a period
+    Route::get('/room-options', [StaffManageController::class, 'roomOptions']);
+    Route::post('/bookings', [StaffManageController::class, 'store']);
+    Route::patch('/bookings/{booking}', [StaffManageController::class, 'update'])->whereNumber('booking');
+    Route::post('/bookings/{booking}/cancel', [StaffManageController::class, 'cancel'])->whereNumber('booking');
+    Route::get('/closures', [StaffManageController::class, 'closures']);
+    Route::post('/closures', [StaffManageController::class, 'close']);
+    Route::delete('/closures/{booking}', [StaffManageController::class, 'reopen'])->whereNumber('booking');
 
     // Front desk
     Route::get('/dashboard', [StaffDeskController::class, 'dashboard']);

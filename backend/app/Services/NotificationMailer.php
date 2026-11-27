@@ -18,6 +18,9 @@ class NotificationMailer
     private const SKIP = ['booking_start_reminder', 'booking_checkout_reminder'];
 
     private const EMAILS = [
+        'booking_added_by_staff' => ['title' => 'Staff booked a room for you', 'button' => 'See my bookings', 'urgent' => false],
+        'booking_changed_by_staff' => ['title' => 'Your booking was changed', 'button' => 'See my bookings', 'urgent' => false],
+        'booking_cancelled_by_staff' => ['title' => 'Your booking was cancelled', 'button' => 'Book again', 'urgent' => true],
         'waiting_list_offer' => [
             'title' => 'A room is free for you',
             'button' => 'Accept the room',
