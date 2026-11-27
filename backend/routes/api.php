@@ -11,6 +11,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportSuggestionController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\RoomNoticeController;
+use App\Http\Controllers\RoomListController;
 use App\Http\Controllers\StaffBookingController;
 use App\Http\Controllers\StudentDashboardController;
 use App\Http\Controllers\WaitingListController;
@@ -42,6 +43,7 @@ Route::get('/rooms/{room}', [RoomController::class, 'show']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/student/dashboard', [StudentDashboardController::class, 'index']);
     Route::get('/room-notices', RoomNoticeController::class);
+    Route::get('/room-list/{type}', RoomListController::class);
     Route::get('/rooms/{type}/availability', [BookingController::class, 'availability'])
         ->where('type', '[a-z_0-9]+');
 

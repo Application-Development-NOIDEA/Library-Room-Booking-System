@@ -1,0 +1,107 @@
+/* Browse Rooms: list of individual carrels on the Carrel Rooms card */
+
+.room-list {
+  margin: 0 0 16px;
+  border: 1px solid #e9e6e9;
+  border-radius: 12px;
+  background: #fcfbfc;
+}
+
+.room-list-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  background: none;
+  color: #75243a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.room-list-toggle small {
+  margin-left: auto;
+  color: #746d78;
+  font-weight: 400;
+}
+
+.room-list-body {
+  padding: 0 14px 12px;
+  border-top: 1px solid #f0edf0;
+}
+
+.room-list ul {
+  display: grid;
+  max-height: 260px;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.room-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0edf0;
+  font-size: 13px;
+}
+
+.room-list li strong {
+  display: block;
+  color: #302a32;
+  font-weight: 600;
+}
+
+.room-list li small {
+  color: #746d78;
+  font-size: 11px;
+}
+
+.room-list-status {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  text-align: right;
+}
+
+.room-list-badge {
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.room-list-badge.is-free {
+  background: #eef6ee;
+  color: #2f5d34;
+}
+
+.room-list-badge.is-busy {
+  background: #faf5e9;
+  color: #755922;
+}
+
+.room-list-badge.is-closed {
+  background: #f1f0f2;
+  color: #746d78;
+}
+
+.room-list-note {
+  margin: 10px 0 0;
+  color: #746d78;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.room-list-toggle:focus-visible {
+  outline: 2px solid #b49250;
+  outline-offset: -2px;
+  border-radius: 12px;
+}

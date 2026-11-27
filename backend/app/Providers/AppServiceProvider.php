@@ -36,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Email a copy of every new notification (the bell has it too)
+        \App\Models\UserNotification::created(fn (\App\Models\UserNotification $n) => app(\App\Services\NotificationMailer::class)->send($n));
     }
 }

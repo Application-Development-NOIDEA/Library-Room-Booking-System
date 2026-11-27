@@ -212,3 +212,38 @@
     right: 16px;
   }
 }
+
+/* Browser alerts on/off */
+
+.bell-permission {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e9e6e9;
+  background: #faf5e9;
+  color: #4f4552;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.bell-permission.muted {
+  display: block;
+  background: #f7f6f7;
+  color: #746d78;
+}
+
+.bell-permission button {
+  flex-shrink: 0;
+  padding: 6px 10px;
+  border: 1px solid #e5dac7;
+  border-radius: 8px;
+  background: white;
+  color: #755922;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
