@@ -174,6 +174,20 @@ export default function StaffDashboard({ token, user }) {
     load();
   }, [load]);
 
+  // Keep staff views in sync with Supabase via Laravel, without refreshing during an action.
+  useEffect(() => {
+    if (busy) return undefined;
+    const refresh = () => {
+      if (document.visibilityState === 'visible') load();
+    };
+    const interval = window.setInterval(refresh, 60_000);
+    window.addEventListener('focus', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refresh);
+    };
+  }, [load, busy]);
+
   /* Run a staff action, show the result, then refresh everything from the server. */
   async function act(task, okMessage) {
     setBusy(true);
@@ -348,17 +362,27 @@ export default function StaffDashboard({ token, user }) {
     [data.bookings]
   );
 
-  // Room availability grouped by room type, same idea as the student dashboard
+  // Laravel derives available_now from live bookings, including status and time overlap.
   const roomAvailability = useMemo(() => {
     const groups = {};
     data.rooms.forEach((room) => {
       const key = room.type || 'Other';
       groups[key] = groups[key] || { type: key, open: 0, total: 0 };
       groups[key].total += 1;
-      if (room.status === 'active') groups[key].open += 1;
+      if (room.available_now === true) groups[key].open += 1;
     });
     return Object.values(groups);
   }, [data.rooms]);
+
+  const attention = useMemo(() => ({
+    upcomingCheckIns: data.bookings.filter(
+      (booking) => booking.status === 'confirmed' && booking.end_time > nowKL()
+    ).length,
+    pendingExtensions: data.extensions.filter(
+      (extension) => extension.status === 'pending'
+    ).length,
+    pendingReviews: queue.pending_count,
+  }), [data.bookings, data.extensions, queue.pending_count, now]);
 
   const tabName = NAVIGATION.find(([id]) => id === tab)?.[2] ?? 'Dashboard';
   const initials = (user?.name || 'Library Staff').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -477,6 +501,30 @@ export default function StaffDashboard({ token, user }) {
           {/* DASHBOARD */}
           {tab === 'dashboard' && (
             <>
+              <section className="staff-attention-panel" aria-label="Items requiring attention">
+                <div className="staff-panel-heading">
+                  <h2>Requires Attention</h2>
+                  <span className="staff-muted">Current staff action queue</span>
+                </div>
+                <div className="staff-attention-grid">
+                  <button type="button" onClick={() => go('checkin')}>
+                    <span>Today's pending check-ins</span>
+                    <strong>{loading ? '…' : attention.upcomingCheckIns}</strong>
+                    <small>Open check-in desk →</small>
+                  </button>
+                  <button type="button" onClick={() => go('extensions')}>
+                    <span>Pending extensions</span>
+                    <strong>{loading ? '…' : attention.pendingExtensions}</strong>
+                    <small>Review requests →</small>
+                  </button>
+                  <button type="button" onClick={() => go('analyzer')}>
+                    <span>AI reports needing review</span>
+                    <strong>{loading ? '…' : attention.pendingReviews}</strong>
+                    <small>Review reports →</small>
+                  </button>
+                </div>
+              </section>
+
               <section className={`staff-hero ${nextArrival ? '' : 'is-quiet'}`}>
                 <div className="staff-hero-top">
                   <span className="staff-hero-kicker">{nextArrival ? 'NEXT ARRIVAL' : 'FRONT DESK'}</span>
@@ -731,6 +779,11 @@ export default function StaffDashboard({ token, user }) {
 
                     <p>{room.type} · {room.floor || 'Location not set'}</p>
                     <p>Capacity: {room.capacity}</p>
+                    <p>
+                      <span className={statusClass(room.status !== 'active' ? 'maintenance' : room.occupied_now ? 'checked_in' : 'active')}>
+                        {room.status !== 'active' ? 'Unavailable · Maintenance' : room.occupied_now ? 'Occupied now' : 'Available now'}
+                      </span>
+                    </p>
 
                     <button className="staff-secondary" type="button" disabled={busy} onClick={() => toggleRoom(room)}>
                       {room.status === 'active' ? 'Mark Maintenance' : 'Return to Active'}
