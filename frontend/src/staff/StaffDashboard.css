@@ -268,3 +268,43 @@ body:has(.staff-app) { margin: 0; background: #f7f3f4; }
   .staff-content { animation: none; }
   .staff-app *, .staff-sidebar { transition: none !important; }
 }
+
+/* Live operational alerts (uses the same palette as the rest of PSZ staff) */
+.staff-attention-panel {
+  margin-bottom: 20px;
+  padding: 22px 24px;
+  border: 1px solid #ece4e7;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+.staff-attention-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.staff-app .staff-attention-grid button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px;
+  border: 1px solid #eee4e8;
+  border-radius: 12px;
+  background: #faf7f8;
+  color: var(--ink);
+  text-align: left;
+}
+.staff-app .staff-attention-grid button:hover,
+.staff-app .staff-attention-grid button:focus-visible {
+  background: var(--gold-pale);
+  border-color: var(--gold);
+}
+.staff-attention-grid span { font-size: 13px; color: var(--muted); }
+.staff-attention-grid strong { font-size: 30px; font-variant-numeric: tabular-nums; color: var(--maroon); }
+.staff-attention-grid small { font-size: 12px; color: var(--gold-dark); }
+@media (max-width: 700px) {
+  .staff-attention-grid { grid-template-columns: 1fr; }
+  .staff-attention-panel { padding: 18px; }
+}
