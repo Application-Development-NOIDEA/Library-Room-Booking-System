@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReservationsPanel from './ReservationsPanel';
-import CameraQrScanner from './CameraQrScanner';
+import ScanDesk from './ScanDesk';
 import ReportAnalyzer from './ReportAnalyzer';
 import { staffApi } from './staffService';
 import { tokenStore } from '../auth/authService';
@@ -131,76 +131,6 @@ function BookingTable({ bookings, onSelect }) {
   );
 }
 
-/** "2026-11-27T10:02:00+08:00" -> "10:02 AM" in library time. */
-function clockOf(iso) {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' });
-}
-
-/* ---------- Check-in desk rules (same as the server: BookingQrService) ---------- */
-const CHECK_IN_EARLY_MIN = 15; // check-in opens 15 minutes before the start
-const CHECK_IN_GRACE_MIN = 15; // and closes 15 minutes after it; then it is a no-show
-const LIBRARY_TZ_OFFSET = '+08:00'; // booking times from the API are Malaysia time
-
-/** "2026-11-28" + "08:00" -> Date, read as Malaysia time whatever the PC's time zone is. */
-function libraryTime(date, hhmm) {
-  return new Date(`${date}T${hhmm}:00${LIBRARY_TZ_OFFSET}`);
-}
-
-/** "Sat, 28 Nov 2026" */
-function dayOf(date) {
-  return libraryTime(date, '12:00').toLocaleDateString('en-GB', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur',
-  });
-}
-
-/** "07:45", or "07:45 on Sat, 28 Nov 2026" when it is not today. */
-function whenOf(at, now) {
-  const fmt = (d) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }); // YYYY-MM-DD
-  const time = at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' });
-  return fmt(at) === fmt(now) ? time : `${time} on ${dayOf(fmt(at))}`;
-}
-
-const FINISHED_HINTS = {
-  checked_out: 'Checked out. Nothing more to do for this booking.',
-  no_show: 'Released as a no-show: the student did not check in within 15 minutes. The QR no longer works.',
-  cancelled: 'This booking was cancelled. The QR no longer works.',
-  held: 'This room is still being offered from the waiting list. The student must accept it first.',
-};
-
-/** Which desk buttons are allowed for this booking right now, and why not. */
-function deskActions(b, now) {
-  const start = libraryTime(b.date, b.start_time);
-  const end = libraryTime(b.date, b.end_time);
-  const opens = new Date(start.getTime() - CHECK_IN_EARLY_MIN * 60000);
-  const deadline = new Date(start.getTime() + CHECK_IN_GRACE_MIN * 60000);
-  const statusText = label(b.status).toLowerCase();
-
-  let checkIn = null;
-  if (b.status === 'checked_in') checkIn = 'Already checked in.';
-  else if (b.status !== 'confirmed') checkIn = FINISHED_HINTS[b.status] ?? `This booking is ${statusText}.`;
-  else if (now < opens) checkIn = `Too early: check-in opens at ${whenOf(opens, now)}.`;
-  else if (now >= deadline || now >= end) checkIn = `Check-in closed at ${whenOf(deadline, now)}. The student did not come in time.`;
-
-  let checkOut = null;
-  if (b.status === 'checked_out') checkOut = 'Already checked out.';
-  else if (b.status !== 'checked_in') checkOut = 'The student must be checked in first.';
-
-  let noShow = null;
-  if (b.status !== 'confirmed') noShow = b.status === 'no_show' ? 'Already marked as no-show.' : null;
-  else if (now < deadline) noShow = `Only after ${whenOf(deadline, now)}, if the student has not come.`;
-  if (b.status !== 'confirmed' && b.status !== 'no_show') noShow = noShow ?? 'Only for bookings that are still waiting for check-in.';
-
-  // The one line shown under the buttons
-  const hint =
-    b.status === 'confirmed'
-      ? checkIn ?? `Check-in is open until ${whenOf(deadline, now)}.`
-      : b.status === 'checked_in'
-        ? `Checked in. Use Check out when the student leaves (booking ends at ${b.end_time}).`
-        : checkIn;
-
-  return { checkIn, checkOut, noShow, hint, deadline };
-}
-
 export default function StaffDashboard({ token, user }) {
   const [tab, setTab] = useState('dashboard');
   const [data, setData] = useState({ bookings: [], rooms: [], waitlist: [], extensions: [], reports: [] });
@@ -211,9 +141,7 @@ export default function StaffDashboard({ token, user }) {
   const [queue, setQueue] = useState({ pending_count: 0, items: [] });
   const [drafts, setDrafts] = useState({});
 
-  const [qrInput, setQrInput] = useState('');
-  const [selected, setSelected] = useState(null);
-  const [scanResult, setScanResult] = useState(null); // { tone: 'ok' | 'warn' | 'error', title, text }
+  const [selected, setSelected] = useState(null); // booking opened on the check-in desk from another tab
   const [walkIn, setWalkIn] = useState(defaultWalkIn);
   const [summary, setSummary] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -263,98 +191,10 @@ export default function StaffDashboard({ token, user }) {
     }
   }
 
-  const lookup = useCallback(
-    async (query) => {
-      const value = query.trim();
-      if (!value) return;
-      setBusy(true);
-      try {
-        const { booking } = await staffApi.lookup(token, value);
-        setSelected(booking);
-        setNotice('');
-      } catch (err) {
-        setSelected(null);
-        setNotice(err.message);
-      } finally {
-        setBusy(false);
-      }
-    },
-    [token]
-  );
-
-  /* A scanned QR (camera or USB scanner): check in, or check out if already in. */
-  const scan = useCallback(
-    async (value) => {
-      const code = value.trim();
-      if (!code) return;
-      setBusy(true);
-      setNotice('');
-      try {
-        const result = await staffApi.scan(token, code);
-        setSelected(result.booking ?? null);
-        const tone = result.ok ? 'ok' : result.result === 'not_yet_open' ? 'warn' : 'error';
-        const title = {
-          checked_in: 'Checked in',
-          checked_out: 'Checked out',
-          not_yet_open: 'Too early',
-          expired: 'QR expired',
-          used: 'Already checked out',
-          invalid: 'QR not recognised',
-        }[result.result] ?? (result.ok ? 'Done' : 'Not accepted');
-        let text = result.message;
-        if (result.result === 'not_yet_open' && result.booking) {
-          const b = result.booking;
-          const opens = new Date(libraryTime(b.date, b.start_time).getTime() - CHECK_IN_EARLY_MIN * 60000);
-          const opensAt = opens.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kuala_Lumpur' });
-          text = `${b.reference} starts at ${b.start_time} on ${dayOf(b.date)}. Check-in opens at ${opensAt}.`;
-        }
-        setScanResult({ tone, title, text, at: new Date() });
-        if (result.ok) load();
-      } catch (err) {
-        setScanResult({ tone: 'error', title: 'Scan failed', text: err.message, at: new Date() });
-      } finally {
-        setBusy(false);
-      }
-    },
-    [token, load]
-  );
-
-  /* Typed input: a QR token (USB scanners type it and press Enter) is scanned; a reference is looked up. */
-  const submitCode = useCallback(
-    (value) => {
-      const code = value.trim();
-      setScanResult(null);
-      if (/^[a-f0-9]{64}$/i.test(code)) {
-        setQrInput('');
-        scan(code);
-      } else {
-        lookup(code);
-      }
-    },
-    [scan, lookup]
-  );
-
-  // Stable function, so the camera is not restarted on every render
-  const handleScan = useCallback(
-    (value) => {
-      setQrInput('');
-      scan(value);
-    },
-    [scan]
-  );
-
   function selectBooking(booking) {
     setSelected(booking);
     setNotice('');
     setTab('checkin');
-  }
-
-  async function bookingAction(kind) {
-    if (!selected) return;
-    const messages = { checkIn: 'Checked in.', checkOut: 'Checked out.', noShow: 'Marked as no-show.' };
-    setScanResult(null);
-    const result = await act(() => staffApi[kind](token, selected.id), messages[kind]);
-    if (result?.booking) setSelected(result.booking);
   }
 
   const activeRooms = data.rooms.filter((room) => room.status === 'active');
@@ -767,106 +607,9 @@ export default function StaffDashboard({ token, user }) {
             </>
           )}
 
-          {/* QR CHECK-IN */}
+          {/* QR CHECK-IN: scanning checks in / out automatically */}
           {tab === 'checkin' && (
-            <section className="staff-panel">
-              <h2>QR Check-in / Check-out</h2>
-              <p className="staff-muted">
-                Scan the student&apos;s booking QR: the first scan checks them in, and scanning the same QR
-                again when they leave checks them out. You can also type the booking reference (for example
-                BK-0012). Check-in opens 15 minutes before the start time and closes 15 minutes after it; after
-                that the QR expires and the booking is cancelled automatically.
-              </p>
-
-              <div className="staff-lookup">
-                <input
-                  className="staff-input"
-                  placeholder="BK-0012 or scan a QR code"
-                  aria-label="Booking reference"
-                  value={qrInput}
-                  onChange={(e) => setQrInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') submitCode(qrInput);
-                  }}
-                />
-                <button className="staff-primary" type="button" disabled={busy} onClick={() => submitCode(qrInput)}>
-                  Find booking
-                </button>
-              </div>
-
-              <CameraQrScanner onCode={handleScan} />
-
-              {scanResult && (
-                <div className={`staff-scan-result is-${scanResult.tone}`} role="status" aria-live="assertive">
-                  <span className="staff-scan-icon" aria-hidden="true">
-                    {scanResult.tone === 'ok' ? '✓' : scanResult.tone === 'warn' ? '!' : '✕'}
-                  </span>
-                  <div>
-                    <strong>{scanResult.title}</strong>
-                    <p>{scanResult.text}</p>
-                  </div>
-                  <small>{scanResult.at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Kuala_Lumpur' })}</small>
-                </div>
-              )}
-
-              {selected ? (() => {
-                const allowed = deskActions(selected, now);
-                return (
-                <div className="staff-detail-card">
-                  <h3>{selected.reference}</h3>
-                  <p><strong>Student:</strong> {selected.student}{selected.matric ? ` (${selected.matric})` : ''}</p>
-                  <p><strong>Room:</strong> {selected.room_name}</p>
-                  <p><strong>Time:</strong> {dayOf(selected.date)} · {selected.start_time}–{selected.end_time}</p>
-                  <p>
-                    <strong>Status:</strong>{' '}
-                    <span className={statusClass(selected.status)}>{label(selected.status)}</span>
-                  </p>
-                  {selected.checked_in_at && (
-                    <p><strong>Checked in:</strong> {clockOf(selected.checked_in_at)}</p>
-                  )}
-                  {selected.checked_out_at && (
-                    <p><strong>Checked out:</strong> {clockOf(selected.checked_out_at)}</p>
-                  )}
-                  {selected.status === 'confirmed' && (
-                    <p><strong>Check in by:</strong> {whenOf(allowed.deadline, now)} (then the QR expires and the booking is cancelled)</p>
-                  )}
-
-                  <div className="staff-button-row">
-                    <button
-                      className="staff-primary"
-                      type="button"
-                      disabled={busy || Boolean(allowed.checkIn)}
-                      title={allowed.checkIn ?? 'Check the student in'}
-                      onClick={() => bookingAction('checkIn')}
-                    >
-                      Check in
-                    </button>
-                    <button
-                      className="staff-secondary"
-                      type="button"
-                      disabled={busy || Boolean(allowed.checkOut)}
-                      title={allowed.checkOut ?? 'Check the student out'}
-                      onClick={() => bookingAction('checkOut')}
-                    >
-                      Check out
-                    </button>
-                    <button
-                      className="staff-secondary"
-                      type="button"
-                      disabled={busy || Boolean(allowed.noShow)}
-                      title={allowed.noShow ?? 'Release the room: the student did not come'}
-                      onClick={() => bookingAction('noShow')}
-                    >
-                      Mark no-show
-                    </button>
-                  </div>
-                  {allowed.hint && <p className="staff-desk-hint">{allowed.hint}</p>}
-                </div>
-                );
-              })() : (
-                <div className="staff-empty">Scan a QR code or enter a booking reference to begin.</div>
-              )}
-            </section>
+            <ScanDesk key={selected?.id ?? 'desk'} token={token} onChanged={load} initialBooking={selected} />
           )}
 
           {/* ROOM MANAGEMENT */}

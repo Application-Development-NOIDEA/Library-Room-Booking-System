@@ -1,0 +1,141 @@
+/* QR / Check-in Desk (ScanDesk.jsx) */
+
+.scan-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 360px) 1fr;
+  gap: 24px;
+  align-items: start;
+  margin-top: 18px;
+}
+
+.scan-input-col .staff-camera { margin-bottom: 14px; }
+.scan-input-col .staff-camera-video { width: 100%; }
+
+/* The big result card */
+.scan-card {
+  padding: 22px;
+  border: 2px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  animation: scan-in 0.18s ease-out;
+}
+.scan-card h3 { margin: 0 0 4px; font-size: 22px; }
+.scan-card p { margin: 0; font-size: 14px; line-height: 1.6; }
+
+.scan-card-head { display: flex; gap: 14px; align-items: flex-start; }
+.scan-card-head > div { flex: 1; }
+
+.scan-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--muted);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.scan-close {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.scan-card.tone-idle {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 46px 22px;
+  border-style: dashed;
+  color: var(--muted);
+  text-align: center;
+}
+.scan-card.tone-idle .scan-icon { background: var(--maroon-light); color: var(--maroon); }
+.scan-card.tone-idle h3 { color: var(--ink); font-size: 18px; }
+
+.scan-card.tone-ok { border-color: #8fd1a6; background: #effaf3; }
+.scan-card.tone-ok .scan-icon { background: #1f9d55; }
+.scan-card.tone-ok h3 { color: #14532d; }
+
+.scan-card.tone-out { border-color: #9cc0ea; background: #eff5fd; }
+.scan-card.tone-out .scan-icon { background: #2765ad; }
+.scan-card.tone-out h3 { color: #1d4677; }
+
+.scan-card.tone-warn { border-color: #f0c38a; background: #fff6e8; }
+.scan-card.tone-warn .scan-icon { background: #d97706; }
+.scan-card.tone-warn h3 { color: #7a4b05; }
+
+.scan-card.tone-error { border-color: #efb3b3; background: #fff5f5; }
+.scan-card.tone-error .scan-icon { background: #b3261e; }
+.scan-card.tone-error h3 { color: #8a1f17; }
+
+.scan-card.tone-info .scan-icon { background: var(--gold); }
+
+/* Booking details grid */
+.scan-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px 18px;
+  margin: 18px 0 0;
+  padding: 16px 0 0;
+  border-top: 1px solid rgb(0 0 0 / 8%);
+}
+.scan-details div { min-width: 0; }
+.scan-details dt {
+  margin-bottom: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.scan-details dd { margin: 0; color: var(--ink); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.scan-details dd small { display: block; color: var(--muted); font-size: 12px; font-weight: 400; }
+
+/* Manual override, hidden by default */
+.scan-manual { margin-top: 16px; font-size: 13px; }
+.scan-manual summary { color: var(--maroon); cursor: pointer; }
+.scan-manual p { margin: 8px 0 !important; }
+
+/* Recent scans log */
+.scan-history { margin-top: 26px; }
+.scan-history h3 { margin: 0 0 10px; font-size: 15px; }
+.scan-history ul { margin: 0; padding: 0; list-style: none; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.scan-history li {
+  display: grid;
+  grid-template-columns: 52px 22px 150px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+}
+.scan-history li:first-child { border-top: 0; }
+.scan-history-time { color: var(--muted); font-variant-numeric: tabular-nums; }
+.scan-history-dot { font-weight: 700; text-align: center; }
+.scan-history-what { font-weight: 600; }
+.scan-history-who { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scan-history li.tone-ok .scan-history-dot { color: #1f9d55; }
+.scan-history li.tone-out .scan-history-dot { color: #2765ad; }
+.scan-history li.tone-warn .scan-history-dot { color: #d97706; }
+.scan-history li.tone-error .scan-history-dot { color: #b3261e; }
+
+@keyframes scan-in {
+  from { transform: scale(0.98); opacity: 0.4; }
+}
+
+@media (max-width: 860px) {
+  .scan-layout { grid-template-columns: 1fr; }
+  .scan-history li { grid-template-columns: 46px 18px 1fr; }
+  .scan-history-who { grid-column: 2 / -1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-card { animation: none; }
+}
